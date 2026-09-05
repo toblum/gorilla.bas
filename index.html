@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3eedf">
+  <meta name="description" content="Zwei Gorillas, eine Skyline und explosive Bananen. Der lokale Retro-Klassiker für zwei – direkt im Browser.">
+  <title>GORILLAS — Das Duell über den Dächern</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script src="engine.js" defer></script>
+  <script src="sound.js" defer></script>
+  <script src="game.js" defer></script>
+</head>
+<body>
+  <main class="page">
+    <header class="masthead">
+      <a class="wordmark" href="./" aria-label="Gorillas Startseite">GORILLAS<span class="bas">.BAS</span></a>
+      <div class="edition"><span class="status-dot"></span> ZWEI SPIELER. EIN BILDSCHIRM.<br><span class="edition-sub">DER KLASSIKER, ZURÜCK AUF DEN DÄCHERN.</span></div>
+    </header>
+    <section class="intro" aria-labelledby="tagline">
+      <h1 id="tagline">Große Gefühle.<br class="mobile-break"> Explosive Bananen.</h1>
+      <div class="toolbar"><button class="text-button sound-button" id="sound-toggle" type="button" aria-pressed="true" aria-label="Soundeffekte" title="Soundeffekte ein- oder ausschalten">♪ <span id="sound-label">Ton an</span></button><button class="text-button" id="settings-open" type="button"><span aria-hidden="true">⚙</span> Neues Match</button></div>
+    </section>
+    <section class="console" aria-label="Gorillas Spiel">
+      <div class="scoreboard">
+        <div class="player player-one active" id="player-0"><span class="player-marker">01</span><div><span class="player-name" id="name-0">Spieler 1</span><span class="player-state" id="state-0">AM WURF</span></div><strong class="score" id="score-0">0</strong></div>
+        <div class="round-info"><span id="round">RUNDE 01</span><span class="match-target" id="target-label">ZUERST 3 PUNKTE</span></div>
+        <div class="player player-two" id="player-1"><strong class="score" id="score-1">0</strong><div><span class="player-name" id="name-1">Spieler 2</span><span class="player-state" id="state-1">WARTET</span></div><span class="player-marker">02</span></div>
+      </div>
+      <div class="arena">
+        <canvas id="game" width="800" height="420" role="img" aria-label="Zwei Gorillas stehen auf gegenüberliegenden Hochhäusern. Winkel und Stärke werden unter dem Spielfeld eingegeben.">Zum Spielen benötigst du einen Browser mit Canvas-Unterstützung.</canvas>
+        <div class="weather"><div class="wind-indicator" id="wind" role="img" aria-label="Windstille"><span id="wind-label">WINDSTILLE</span><svg id="wind-gauge" viewBox="0 0 140 16" aria-hidden="true"><path class="wind-axis" d="M70 1V15"/><path id="wind-arrow" d="M70 8H70"/></svg></div><span id="gravity-label">g 9,8</span></div>
+        <div class="result" id="result" hidden>
+          <div class="result-card"><span class="eyebrow" id="result-eyebrow">VOLLTREFFER</span><h2 id="result-title">Punkt für Spieler 1!</h2><p id="result-description"></p><button class="primary-button" id="continue" type="button">Nächste Runde <span aria-hidden="true">→</span></button></div>
+        </div>
+      </div>
+      <div class="control-deck">
+        <div class="turn-copy"><span class="eyebrow" id="turn-label">SPIELER 1 IST DRAN</span><p id="message" role="status" aria-live="polite">Die Stadt gehört euch. Legt los!</p><span id="last-shot" class="last-shot">Dein erster Wurf wartet.</span></div>
+        <form id="shot-form" class="shot-form">
+          <label class="shot-field" for="angle"><span>WINKEL</span><div class="number-wrap"><input id="angle" name="angle" type="number" min="0" max="360" step="1" value="45" required inputmode="numeric"><span>°</span></div></label>
+          <label class="shot-field" for="power"><span>STÄRKE</span><div class="number-wrap"><input id="power" name="power" type="number" min="0" max="360" step="1" value="65" required inputmode="numeric"><span>↗</span></div></label>
+          <button class="primary-button throw-button" id="throw" type="submit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h4v6l3 4h5l4-4v5l-4 5H9l-5-5Z" fill="currentColor"/><path d="M4 2h4v3H4z" fill="currentColor"/></svg><span>Banane werfen<small>LEERTASTE / ENTER ↵</small></span></button>
+        </form>
+      </div>
+      <div class="console-bottom"><span>↑ ↓ WINKEL · ← → STÄRKE · SHIFT: 5ER-SCHRITTE</span><span>0° = GERADEAUS · 90° = SENKRECHT</span></div>
+    </section>
+    <section class="instructions" aria-label="So wird gespielt">
+      <div><span class="step">01 / ZIELEN</span><p>Winkel wählen. Stärke schätzen.<br>Der Wind hat ein Wörtchen mitzureden.</p></div>
+      <div><span class="step">02 / WERFEN</span><p>Trefft den anderen Gorilla.<br>Gebäude nehmen Bananen persönlich.</p></div>
+      <div><span class="step">03 / ABWECHSELN</span><p>Nach jedem Wurf ist der andere dran.<br>Wer das Punkteziel erreicht, gewinnt.</p></div>
+    </section>
+    <footer><span>EINE HOMMAGE AN QBASIC GORILLAS · 1990</span><a href="https://github.com/pmachapman/basic-samples/blob/master/QBASIC/GORILLA.BAS" target="_blank" rel="noopener noreferrer">Das Original <span aria-hidden="true">↗</span></a><span>WENIG PIXEL. VIEL GEFÜHL.</span></footer>
+  </main>
+  <dialog id="settings" aria-labelledby="settings-title">
+    <form id="settings-form">
+      <div class="dialog-top"><span class="eyebrow">FRISCHE SKYLINE. NEUE CHANCE.</span><button id="settings-close" type="button" class="close-button" aria-label="Einstellungen schließen">×</button></div>
+      <h2 id="settings-title">Auf die Dächer.</h2><p class="dialog-description">Zwei Spieler an einem Bildschirm. Ein Treffer, ein Punkt.</p>
+      <div class="settings-grid">
+        <label>Spieler 1<input id="setting-name-0" value="Spieler 1" maxlength="18" autocomplete="off"></label>
+        <label>Spieler 2<input id="setting-name-1" value="Spieler 2" maxlength="18" autocomplete="off"></label>
+        <label>Punkte zum Sieg<input id="setting-target" type="number" min="1" max="99" value="3" step="1" required></label>
+        <label>Gravitation (m/s²)<input id="setting-gravity" type="number" min="0.5" max="30" value="9.8" step="0.1" required></label>
+      </div>
+      <p class="settings-note">Erde: 9,8 · Mond: 1,6. Ein neues Match setzt beide Punktestände zurück.</p>
+      <button class="primary-button" type="submit">Match starten <span aria-hidden="true">→</span></button>
+    </form>
+  </dialog>
+  <noscript><p class="noscript">Bitte aktiviere JavaScript, um Gorillas zu spielen.</p></noscript>
+</body>
+</html>
