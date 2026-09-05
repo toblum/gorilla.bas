@@ -2,22 +2,45 @@
 (function (root) {
   'use strict';
   const WIDTH = 800, HEIGHT = 420, FLOOR = 408, SCALE = 1.25, CRATER = 11;
-  const SPRITE = [
-    '.....######.....', '....########....', '....##eeee##....',
-    '....##ffff##....', '.....######.....', '..############..',
-    '.##############.', '################', '################',
-    '######ffff######', '#####ffffff#####', '###.#ffffff#.###',
-    '###.##ffff##.###', '....###..###....', '...####..####...',
-    '..#####..#####..', '..####....####..'
-  ];
+  const GORILLA_WIDTH = 32, GORILLA_HEIGHT = 34, CELEBRATION_DURATION = 2.4;
+  // One logical pixel per cell: the same detailed silhouette is drawn and hit-tested.
+  const SPRITE = (() => {
+    const pixels = Array.from({ length: GORILLA_HEIGHT }, () => Array(GORILLA_WIDTH).fill('.'));
+    const rect = (x, y, w, h, color) => {
+      for (let row = y; row < y + h; row++) for (let col = x; col < x + w; col++) pixels[row][col] = color;
+    };
+    // Heavy shoulders, long bent arms, narrow hips and planted feet.
+    rect(7, 9, 18, 5, 's'); rect(5, 12, 22, 10, 's'); rect(8, 22, 16, 6, 's');
+    rect(8, 11, 16, 11, '#'); rect(10, 21, 12, 7, '#');
+    for (const right of [false, true]) {
+      const box = (x, y, w, h, color) => rect(right ? 32 - x - w : x, y, w, h, color);
+      box(3, 11, 6, 7, 's'); box(1, 16, 6, 10, 's'); box(0, 24, 6, 6, 's');
+      box(4, 12, 4, 6, '#'); box(2, 17, 4, 9, '#'); box(1, 25, 4, 4, '#');
+      box(4, 13, 2, 4, 'h'); box(2, 26, 1, 2, 'h');
+      box(8, 27, 6, 5, 's'); box(6, 31, 8, 3, 's');
+      box(9, 27, 4, 5, '#'); box(7, 32, 6, 1, 'h');
+    }
+    // Broad chest with shallow muscle contours, not separate dark patches.
+    rect(9, 12, 14, 2, 'h'); rect(8, 14, 16, 5, '#');
+    rect(15, 14, 2, 4, 's'); rect(9, 19, 5, 1, 's'); rect(18, 19, 5, 1, 's');
+    rect(14, 18, 1, 1, 's'); rect(17, 18, 1, 1, 's');
+    rect(12, 22, 8, 1, 'h'); rect(12, 25, 8, 1, 's');
+    // Low brow, individual eyes, cheek pads, nostrils and muzzle.
+    rect(11, 0, 10, 2, 's'); rect(9, 2, 14, 7, 's'); rect(8, 4, 16, 3, 's');
+    rect(11, 1, 10, 2, '#'); rect(10, 3, 12, 5, '#');
+    rect(11, 3, 10, 2, 'd'); rect(12, 4, 2, 1, 'f'); rect(18, 4, 2, 1, 'f');
+    rect(12, 6, 8, 3, 'f'); rect(14, 6, 1, 1, 'd'); rect(17, 6, 1, 1, 'd');
+    rect(14, 8, 4, 1, 'd');
+    return pixels.map(row => row.join(''));
+  })();
   const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
   function pointAt(shot, time, wind, gravity) {
     return { x: shot.startX + SCALE * (shot.vx * time + wind / 10 * time * time),
       y: shot.startY + SCALE * (-shot.vy * time + gravity / 2 * time * time) };
   }
   function gorillaPixel(gorilla, x, y) {
-    const col = Math.floor((x - gorilla.x + 16) / 2), row = Math.floor((y - gorilla.y) / 2);
-    return row >= 0 && row < SPRITE.length && col >= 0 && col < 16 && SPRITE[row][col] !== '.';
+    const col = Math.floor(x - gorilla.x + GORILLA_WIDTH / 2), row = Math.floor(y - gorilla.y);
+    return row >= 0 && row < GORILLA_HEIGHT && col >= 0 && col < GORILLA_WIDTH && SPRITE[row][col] !== '.';
   }
   class Game {
     constructor(options = {}, random = Math.random) { this.random = random; this.reset(options); }
@@ -33,7 +56,7 @@
     integer(min, max) { return min + Math.floor(this.random() * (max - min + 1)); }
     newRound() {
       this.round++; this.phase = 'aiming'; this.shot = null; this.impact = null;
-      this.winner = null; this.sunHit = false; this.lastEvent = 'start';
+      this.winner = null; this.sunHit = false; this.lastEvent = 'start'; this.celebrationAge = 0;
       this.buildings = []; this.craters = []; this.terrain = new Uint8Array(WIDTH * HEIGHT);
       const slope = this.integer(0, 3);
       for (let x = 0; x < WIDTH;) {
@@ -50,7 +73,7 @@
         x += width;
       }
       this.gorillas = [this.integer(1, 2), this.buildings.length - 1 - this.integer(1, 2)].map(index => {
-        const b = this.buildings[index]; return { x: Math.round(b.x + b.width / 2), y: b.y - 34, alive: true };
+        const b = this.buildings[index]; return { x: Math.round(b.x + b.width / 2), y: b.y - GORILLA_HEIGHT, alive: true };
       });
       this.wind = this.integer(-4, 5);
       if (this.integer(1, 3) === 1) this.wind += (this.wind > 0 ? 1 : -1) * this.integer(1, 10);
@@ -100,14 +123,19 @@
       this.shot = null; this.sunHit = false;
       // Alternation continues across rounds, including after a self-hit.
       this.turn = 1 - this.turn;
-      if (this.winner !== null) this.phase = this.scores[this.winner] >= this.options.target ? 'matchOver' : 'roundOver';
+      if (this.winner !== null) { this.phase = 'celebrating'; this.celebrationAge = 0; }
       else this.phase = 'aiming';
     }
     update(seconds) {
       if (!Number.isFinite(seconds) || seconds <= 0) return;
+      if (this.impact) this.impact.age += seconds;
+      if (this.phase === 'celebrating') {
+        this.celebrationAge += seconds;
+        if (this.celebrationAge >= CELEBRATION_DURATION) this.phase = this.scores[this.winner] >= this.options.target ? 'matchOver' : 'roundOver';
+        return;
+      }
       if (this.phase === 'impact') {
-        this.impact.age += seconds;
-        if (this.impact.age >= (this.winner !== null ? 1 : .45)) this.finishShot();
+        if (this.impact.age >= (this.winner !== null ? .8 : .65)) this.finishShot();
         return;
       }
       if (this.phase !== 'flying') return;
@@ -139,7 +167,7 @@
       return false;
     }
   }
-  const api = { Game, WIDTH, HEIGHT, FLOOR, CRATER, SPRITE, pointAt, gorillaPixel };
+  const api = { Game, WIDTH, HEIGHT, FLOOR, CRATER, SPRITE, GORILLA_WIDTH, GORILLA_HEIGHT, CELEBRATION_DURATION, pointAt, gorillaPixel };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Gorillas = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

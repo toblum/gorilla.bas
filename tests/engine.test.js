@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { Game, WIDTH, HEIGHT, SPRITE, pointAt, gorillaPixel } = require('../engine.js');
+const { Game, WIDTH, HEIGHT, SPRITE, GORILLA_HEIGHT, CELEBRATION_DURATION, pointAt, gorillaPixel } = require('../engine.js');
 
 function seeded(seed) {
   return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
@@ -13,7 +13,7 @@ function emptyGame(options = {}, seed = 42) {
 }
 function settle(game, fps = 60) {
   let frames = 0;
-  while (['flying', 'impact'].includes(game.phase) && frames++ < fps * 180) game.update(1 / fps);
+  while (['flying', 'impact', 'celebrating'].includes(game.phase) && frames++ < fps * 180) game.update(1 / fps);
   assert.ok(frames < fps * 180, 'Shot must settle within bounded time');
 }
 
@@ -31,7 +31,7 @@ test('Generated cities have two supported gorillas, varied buildings and bounded
     const game = new Game({}, seeded(seed));
     assert.ok(game.buildings.length >= 9);
     assert.ok(game.gorillas[0].x < WIDTH / 2 && game.gorillas[1].x > WIDTH / 2);
-    for (const g of game.gorillas) { assert.ok(g.y > 40); assert.ok(game.terrainAt(g.x, g.y + SPRITE.length * 2)); }
+    for (const g of game.gorillas) { assert.ok(g.y > 40); assert.ok(game.terrainAt(g.x, g.y + GORILLA_HEIGHT)); }
     assert.ok(game.wind >= -14 && game.wind <= 15); unique.add(game.gorillas[0].y);
   }
   assert.ok(unique.size > 20);
@@ -99,10 +99,10 @@ test('Crater masks match pixel centers and preserve surrounding terrain', () => 
 test('Above-screen arcs return and the sun is passable', () => {
   const g = emptyGame(); g.gorillas[0] = { x: 400, y: 180, alive: true };
   g.fire(90, 60); let above = false, sunHit = false;
-  for (let frame = 0; frame < 5000 && ['flying', 'impact'].includes(g.phase); frame++) {
+  for (let frame = 0; frame < 5000 && ['flying', 'impact', 'celebrating'].includes(g.phase); frame++) {
     g.update(1 / 60); above ||= Boolean(g.shot && g.shot.y < 0); sunHit ||= g.sunHit;
   }
-  assert.ok(above); assert.ok(sunHit); assert.ok(!['flying', 'impact'].includes(g.phase));
+  assert.ok(above); assert.ok(sunHit); assert.ok(!['flying', 'impact', 'celebrating'].includes(g.phase));
 });
 test('Same shot at 20, 60 and 144 fps hits the same object and point', () => {
   const results = [20, 60, 144].map(fps => {
@@ -121,4 +121,14 @@ test('Input guards reject non-finite/out-of-range throws; reset interrupts an ac
   g.fire(50, 100); g.update(.05); g.reset({ names: [' X ', ''], target: 5, gravity: 1.6 });
   assert.equal(g.phase, 'aiming'); assert.equal(g.shot, null); assert.equal(g.turn, 0);
   assert.deepEqual(g.options.names, ['X', 'Spieler 2']); assert.deepEqual(g.scores, [0, 0]);
+});
+
+test('A hit leaves time for the victory dance before showing results, with no extra throws or points', () => {
+  const g = emptyGame({ target: 1 }); g.fire(45, 0);
+  g.update(.8);
+  assert.equal(g.phase, 'celebrating'); assert.equal(g.winner, 1);
+  assert.equal(g.continue(), false); assert.equal(g.fire(45, 65), false);
+  g.update(CELEBRATION_DURATION - .1); assert.equal(g.phase, 'celebrating');
+  g.update(.2); assert.equal(g.phase, 'matchOver'); assert.deepEqual(g.scores, [0, 1]);
+  g.reset(); assert.equal(g.celebrationAge, 0); assert.equal(g.phase, 'aiming');
 });

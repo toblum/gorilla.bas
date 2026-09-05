@@ -17,13 +17,14 @@ Dann [http://127.0.0.1:8080](http://127.0.0.1:8080) öffnen. Der lokale Server e
 
 ## Selbst hosten
 
-Diese sechs Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
+Diese sieben Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
 
 ```text
 index.html
 style.css
 engine.js
 sound.js
+visuals.js
 game.js
 favicon.svg
 ```
@@ -40,6 +41,7 @@ Die Startdatei ist `index.html`. Auch ein Unterordner funktioniert, da alle Asse
 - Retro-Soundeffekte begleiten Würfe, Gebäudetreffer, Gorillatreffer, Fehlwürfe und Siege. **Ton an / Ton aus** schaltet sie um. Der Browser gibt Audio erst nach einer Spielaktion frei; die Töne entstehen lokal per Web Audio, ohne Audiodateien oder Downloads.
 - Gebäude bekommen bleibende Löcher. Ein direkter Gorillatreffer bringt dem Gegner des getroffenen Gorillas einen Punkt – auch bei einem Selbsttreffer. Sehr geringe Stärke (0 oder 1) trifft den Werfer selbst.
 - Nach einem Treffer startet **Nächste Runde** eine neue Skyline mit neuem Wind. Die Wurfreihenfolge wechselt weiter.
+- Zuerst feiert der Sieger 2,4 Sekunden auf seinem Dach mit abwechselnd erhobenen Armen. Im anschließenden Ergebnisdialog jubelt er weiter. Explosionen zeigen einen kurzen Feuerball, aufsteigenden Rauch, Funken und fallende Trümmer. Bei aktivierter Systemoption „Bewegung reduzieren“ sind die Effekte zurückgenommen und die Siegerpose statisch.
 - Wer das eingestellte Punkteziel zuerst erreicht, gewinnt. **Revanche spielen** startet mit denselben Namen und Einstellungen bei 0 : 0. **Neues Match** erlaubt andere Einstellungen und setzt das Spiel zurück.
 - Einstellungen pausieren eine laufende Flugbahn. Beim Wechsel in einen anderen Browser-Tab pausiert das Spiel ebenfalls. Neuladen setzt das Match zurück; es gibt absichtlich keinen Spielstandspeicher.
 
@@ -57,7 +59,7 @@ Pfeiltasten und Leertaste sind eine Komfortbedienung dieser Web-Version. Im rech
 
 ## Entwicklung und Tests
 
-`engine.js` enthält die unabhängig vom Browser testbaren Spielregeln. `game.js` zeichnet das Canvas und verbindet die HTML-Bedienung mit dem Spiel. `sound.js` erzeugt die Soundeffekte. Zum Spielen wird Node.js nicht benötigt.
+`engine.js` enthält die unabhängig vom Browser testbaren Spielregeln. `game.js` zeichnet das Canvas und verbindet die HTML-Bedienung mit dem Spiel. `sound.js` erzeugt die Soundeffekte, `visuals.js` zeichnet die detaillierten Pixel-Gorillas und Explosionen. Zum Spielen wird Node.js nicht benötigt.
 
 Automatische Tests mit Node.js 18 oder neuer:
 
@@ -69,6 +71,6 @@ Die Tests prüfen Fluggleichungen, Wind und Gravitation, 100 erzeugte Skylines, 
 
 Zusätzlich im Browser geprüft: Namens- und Zieländerung, Eingabesperre während des Wurfs, Fehlwurf, Selbsttreffer per Enter, Siegdialog und Revanche. Die Layoutprüfung unter `tests/responsive.html` enthält 320 und 390 Pixel breite Mobilansichten sowie ein Desktopfenster mit 1000 × 720 Pixeln. Der Browserdurchlauf erfolgte über den lokalen HTTP-Server; der direkte Dateistart wurde nicht automatisiert geprüft.
 
-Die Erweiterung ist mit 16 automatischen Tests abgesichert. Im Browser wurden Pfeiltasten, Shift-Schritte, Eingabegrenzen, Leertastenwurf, ungestörte Texteingabe im Dialog sowie Ton an/aus geprüft. `tests/audio.html` rendert alle sechs Effekte über Web Audio und prüft deren Signalpegel sowie die Stummschaltung.
+Die Erweiterung ist mit 17 automatischen Tests abgesichert, einschließlich der gesperrten Eingabe während der Jubelphase und des anschließenden Matchendes. Im Browser wurden Pfeiltasten, Shift-Schritte, Eingabegrenzen, Leertastenwurf, ungestörte Texteingabe im Dialog sowie Ton an/aus geprüft. `tests/audio.html` rendert alle sechs Effekte über Web Audio und prüft deren Signalpegel sowie die Stummschaltung. `tests/visuals.html` zeigt die Gorilla-Posen vergrößert und die Explosionen zu verschiedenen Zeitpunkten.
 
 Aktuelle Desktop- und Mobilbrowser mit Canvas und HTML-Dialogen werden vorausgesetzt. Die Seite benötigt während des Spielens keine Netzwerkanfragen; lediglich der freiwillige Link zum Original öffnet GitHub.

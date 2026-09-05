@@ -1,0 +1,13 @@
+<!doctype html><html lang="de"><meta charset="utf-8"><title>Gorillas – Grafikprüfung</title>
+<style>body{background:#f3eedf;color:#252d31;font:14px monospace;padding:24px}canvas{image-rendering:pixelated;max-width:100%;border:1px solid #252d31}label{display:block;margin:15px 0}</style>
+<h1>Gorillas: Brust, Arme und Gesicht</h1><p>Ruhepose · linker Arm · beide Arme · rechter Arm (je 4× vergrößert)</p>
+<canvas id="actors" width="800" height="370"></canvas><h2>Explosion: Feuer → Rauch → fallende Trümmer</h2>
+<label>Alter der Explosion <input id="age" type="range" min="0" max="1.8" step="0.01" value="0.25"><output id="value">0,25 s</output></label>
+<canvas id="effects" width="800" height="220"></canvas>
+<script src="../engine.js"></script><script src="../visuals.js"></script><script>
+const actors=document.getElementById('actors').getContext('2d'); actors.fillStyle='#eeb59a';actors.fillRect(0,0,800,370);
+for(let player=0;player<2;player++) for(let i=0;i<4;i++){actors.save();actors.translate(100+i*200,player*180+20);actors.scale(4,4);GorillaVisuals.drawGorilla(actors,0,5,player,['idle','left','both','right'][i]);actors.restore();}
+const effects=document.getElementById('effects').getContext('2d');
+function draw(){const age=Number(document.getElementById('age').value);document.getElementById('value').value=age.toFixed(2)+' s';effects.fillStyle='#eeb59a';effects.fillRect(0,0,800,220);for(let i=0;i<4;i++){const t=i===0?age:[0,.15,.5,1.1][i];GorillaVisuals.drawExplosion(effects,{x:100+i*200,y:105,age:t,type:'gorilla'},4);effects.fillStyle='#252d31';effects.fillText(t.toFixed(2)+' s',80+i*200,200);}}
+document.getElementById('age').oninput=draw;draw();
+</script></html>

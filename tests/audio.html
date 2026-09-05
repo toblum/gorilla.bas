@@ -5,10 +5,10 @@
 <script>
 document.getElementById('run').onclick = async () => {
   const list = document.getElementById('results'); list.replaceChildren();
-  for (const effect of ['throw','building','gorilla','miss','round','match','muted']) {
+  for (const effect of ['throw','building','gorilla','miss','round','match','cheer','champion','muted']) {
     const item = document.createElement('li'); list.append(item);
     try {
-      const context = new OfflineAudioContext(1, 44100 * 2, 44100);
+      const context = new OfflineAudioContext(1, 44100 * 3, 44100);
       // Offline contexts render on startRendering rather than resume.
       const wrapper = { get currentTime(){ return context.currentTime; }, state:'running', destination:context.destination,
         createGain:context.createGain.bind(context), createOscillator:context.createOscillator.bind(context) };

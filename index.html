@@ -10,18 +10,17 @@
   <link rel="stylesheet" href="style.css">
   <script src="engine.js" defer></script>
   <script src="sound.js" defer></script>
+  <script src="visuals.js" defer></script>
   <script src="game.js" defer></script>
 </head>
 <body>
   <main class="page">
     <header class="masthead">
-      <a class="wordmark" href="./" aria-label="Gorillas Startseite">GORILLAS<span class="bas">.BAS</span></a>
-      <div class="edition"><span class="status-dot"></span> ZWEI SPIELER. EIN BILDSCHIRM.<br><span class="edition-sub">DER KLASSIKER, ZURÜCK AUF DEN DÄCHERN.</span></div>
-    </header>
-    <section class="intro" aria-labelledby="tagline">
-      <h1 id="tagline">Große Gefühle.<br class="mobile-break"> Explosive Bananen.</h1>
+      <h1 class="brand"><a class="wordmark" href="./" aria-label="Gorillas Startseite">GORILLAS<span class="bas">.BAS</span></a></h1>
+      <div class="header-tools"><div class="edition"><span class="status-dot"></span> ZWEI SPIELER. EIN BILDSCHIRM.<br><span class="edition-sub">DER KLASSIKER, ZURÜCK AUF DEN DÄCHERN.</span></div>
       <div class="toolbar"><button class="text-button sound-button" id="sound-toggle" type="button" aria-pressed="true" aria-label="Soundeffekte" title="Soundeffekte ein- oder ausschalten">♪ <span id="sound-label">Ton an</span></button><button class="text-button" id="settings-open" type="button"><span aria-hidden="true">⚙</span> Neues Match</button></div>
-    </section>
+      </div>
+    </header>
     <section class="console" aria-label="Gorillas Spiel">
       <div class="scoreboard">
         <div class="player player-one active" id="player-0"><span class="player-marker">01</span><div><span class="player-name" id="name-0">Spieler 1</span><span class="player-state" id="state-0">AM WURF</span></div><strong class="score" id="score-0">0</strong></div>
@@ -32,7 +31,7 @@
         <canvas id="game" width="800" height="420" role="img" aria-label="Zwei Gorillas stehen auf gegenüberliegenden Hochhäusern. Winkel und Stärke werden unter dem Spielfeld eingegeben.">Zum Spielen benötigst du einen Browser mit Canvas-Unterstützung.</canvas>
         <div class="weather"><div class="wind-indicator" id="wind" role="img" aria-label="Windstille"><span id="wind-label">WINDSTILLE</span><svg id="wind-gauge" viewBox="0 0 140 16" aria-hidden="true"><path class="wind-axis" d="M70 1V15"/><path id="wind-arrow" d="M70 8H70"/></svg></div><span id="gravity-label">g 9,8</span></div>
         <div class="result" id="result" hidden>
-          <div class="result-card"><span class="eyebrow" id="result-eyebrow">VOLLTREFFER</span><h2 id="result-title">Punkt für Spieler 1!</h2><p id="result-description"></p><button class="primary-button" id="continue" type="button">Nächste Runde <span aria-hidden="true">→</span></button></div>
+          <div class="result-card"><canvas id="winner-portrait" width="144" height="144" role="img" aria-label="Der Sieger jubelt"></canvas><span class="eyebrow" id="result-eyebrow">VOLLTREFFER</span><h2 id="result-title">Punkt für Spieler 1!</h2><p id="result-description"></p><button class="primary-button" id="continue" type="button">Nächste Runde <span aria-hidden="true">→</span></button></div>
         </div>
       </div>
       <div class="control-deck">

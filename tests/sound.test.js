@@ -40,3 +40,11 @@ test('Missing or rejected Web Audio does not crash or retry on every frame', asy
   const denied = new Sound(() => context); denied.play('throw'); await Promise.resolve();
   assert.equal(denied.available, false); assert.equal(denied.voices.size, 0);
 });
+test('Victory melodies cover the full celebration animation', () => {
+  for (const effect of ['cheer', 'champion']) {
+    const context = audioStub(), sound = new Sound(() => context);
+    sound.play(effect);
+    assert.equal(context.voices.length, 14);
+    assert.ok(context.voices.at(-1).stopTime - context.voices[0].startTime > 2.3);
+  }
+});

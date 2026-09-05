@@ -1,7 +1,8 @@
 /* Canvas presentation and accessible HTML controls. No network dependencies. */
 (() => {
   'use strict';
-  const { Game, WIDTH, HEIGHT, FLOOR, SPRITE } = window.Gorillas;
+  const { Game, WIDTH, HEIGHT, FLOOR } = window.Gorillas;
+  const { drawGorilla, drawExplosion } = window.GorillaVisuals;
   const game = new Game();
   const sound = new window.GorillaSound();
   const $ = id => document.getElementById(id);
@@ -10,7 +11,7 @@
   const cityCtx = city.getContext('2d');
   const palette = [ ['#667b78', '#81918a'], ['#b78377', '#c69583'], ['#797986', '#94909a'], ['#445e64', '#60787c'] ];
   const colors = ['#f3854e', '#b9d4b6'];
-  let drawnRound = 0, drawnTerrain = -1, previousPhase = '', previousTime = 0, uiDirty = true;
+  let drawnRound = 0, drawnTerrain = -1, previousPhase = '', previousTime = 0, uiDirty = true, ambientTimer = 3.5;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function buildCity() {
@@ -35,6 +36,17 @@
       cityCtx.putImageData(image, 0, 0); drawnTerrain = game.craters.length;
     }
   }
+  function updateAmbientLights(dt) {
+    if (reducedMotion || dt <= 0) return;
+    ambientTimer -= dt;
+    if (ambientTimer > 0) return;
+    ambientTimer = 3.5 + Math.random() * 3.5;
+    const candidates = game.buildings.flatMap(b => b.windows.filter(w => game.terrain[(w.y + 3) * WIDTH + w.x + 2]));
+    if (!candidates.length) return;
+    const window = candidates[Math.floor(Math.random() * candidates.length)];
+    window.lit = !window.lit;
+    drawnTerrain = -1;
+  }
   function sun() {
     const x = WIDTH / 2, y = 61;
     ctx.fillStyle = '#f9dc93';
@@ -49,14 +61,10 @@
   }
   function gorilla(g, player, time) {
     if (!g.alive) return;
-    const celebrating = game.winner === player;
-    const lift = !reducedMotion && celebrating ? Math.floor(time / 180) % 2 : -1;
-    for (let row = 0; row < SPRITE.length; row++) for (let col = 0; col < 16; col++) {
-      const pixel = SPRITE[row][col]; if (pixel === '.') continue;
-      ctx.fillStyle = pixel === 'e' ? '#273b3e' : pixel === 'f' ? (player === 0 ? '#c26040' : '#7e9e89') : colors[player];
-      const armLift = ((lift === 0 && col < 3) || (lift === 1 && col > 12)) && row > 6 && row < 13 ? 13 : 0;
-      ctx.fillRect(g.x - 16 + col * 2, g.y + row * 2 - armLift, 2, 2);
-    }
+    const celebrating = game.winner === player && game.phase !== 'impact';
+    const pose = celebrating ? (reducedMotion ? 'both' : ['left', 'both', 'right', 'both'][Math.floor(time / 220) % 4]) : 'idle';
+    const bounce = celebrating && !reducedMotion ? Math.abs(Math.sin(time / 140)) * 3 : 0;
+    drawGorilla(ctx, g.x, g.y, player, pose, bounce);
     if (game.phase === 'aiming' && game.turn === player) {
       const y = g.y - 17 + (reducedMotion ? 0 : Math.round(Math.sin(time / 240) * 2));
       ctx.fillStyle = colors[player]; ctx.fillRect(g.x - 5, y, 10, 2); ctx.fillRect(g.x - 3, y + 2, 6, 2); ctx.fillRect(g.x - 1, y + 4, 2, 2);
@@ -91,19 +99,17 @@
     ctx.fillStyle = '#9ba99d'; ctx.fillRect(0, FLOOR + 1, WIDTH, 1);
     game.gorillas.forEach((g, player) => gorilla(g, player, time));
     if (game.shot && game.phase === 'flying') banana(game.shot);
-    if (game.phase === 'impact') {
-      const hit = game.impact, duration = game.winner !== null ? 1 : .45;
-      const progress = hit.age / duration, radius = (game.winner !== null ? 30 : 16) * Math.sin(progress * Math.PI);
-      ctx.fillStyle = progress < .45 ? '#fff0b0' : '#f2764c';
-      ctx.beginPath(); ctx.arc(hit.x, hit.y, Math.max(0, radius), 0, Math.PI * 2); ctx.fill();
-      if (!reducedMotion) for (let i = 0; i < 8; i++) {
-        const a = i * Math.PI / 4, distance = progress * 42;
-        ctx.fillRect(Math.round(hit.x + Math.cos(a) * distance), Math.round(hit.y + Math.sin(a) * distance + progress * progress * 20), 3, 3);
-      }
+    if (game.impact) drawExplosion(ctx, game.impact, game.wind, reducedMotion);
+    if (!$('result').hidden && game.winner !== null) {
+      const portrait = $('winner-portrait').getContext('2d');
+      portrait.clearRect(0, 0, 144, 144); portrait.save(); portrait.scale(3, 3);
+      const pose = reducedMotion ? 'both' : ['left', 'both', 'right', 'both'][Math.floor(time / 220) % 4];
+      drawGorilla(portrait, 24, 9, game.winner, pose); portrait.restore();
     }
   }
   function syncUI(focus = false) {
-    const aiming = game.phase === 'aiming', ended = ['roundOver', 'matchOver'].includes(game.phase);
+    const aiming = game.phase === 'aiming', celebrating = game.phase === 'celebrating';
+    const ended = celebrating || ['roundOver', 'matchOver'].includes(game.phase);
     for (let p = 0; p < 2; p++) {
       $(`name-${p}`).textContent = game.options.names[p]; $(`score-${p}`).textContent = game.scores[p];
       $(`player-${p}`).classList.toggle('active', !ended && p === game.turn);
@@ -117,7 +123,7 @@
     $('wind-arrow').setAttribute('d', game.wind === 0 ? '' : `M70 8H${tip}M${head} 5L${tip} 8L${head} 11`);
     $('gravity-label').textContent = `g ${game.options.gravity.toLocaleString('de-DE')} m/s²`;
     for (const id of ['angle', 'power', 'throw']) $(id).disabled = !aiming;
-    $('result').hidden = !ended;
+    $('result').hidden = !ended || celebrating;
     $('turn-label').textContent = ended ? (game.phase === 'matchOver' ? 'MATCH ENTSCHIEDEN' : 'RUNDE ENTSCHIEDEN') : `${game.options.names[game.turn].toLocaleUpperCase('de-DE')} ${aiming ? 'IST DRAN' : 'WIRFT'}`;
     if (aiming) {
       const last = game.lastShots[game.turn];
@@ -132,8 +138,9 @@
       const selfHit = game.impact.player === 1 - game.turn;
       $('result-description').textContent = `${selfHit ? 'Oh nein, ein Selbsttreffer! ' : ''}${matchOver ? `Endstand ${game.scores[0]} : ${game.scores[1]}. Zeit für eine Revanche?` : 'Neue Skyline, neuer Wind. Auf in die nächste Runde.'}`;
       $('continue').textContent = matchOver ? 'Revanche spielen →' : 'Nächste Runde →';
-      $('message').textContent = $('result-title').textContent;
-      if (!$('settings').open) $('continue').focus({ preventScroll: true });
+      $('message').textContent = celebrating ? `${name} feiert seinen Treffer!` : $('result-title').textContent;
+      $('winner-portrait').setAttribute('aria-label', `${name} jubelt mit erhobenen Armen`);
+      if (!celebrating && !$('settings').open) $('continue').focus({ preventScroll: true });
     } else {
       $('message').textContent = game.phase === 'impact' ? (game.winner !== null ? 'Treffer! Das gibt einen Punkt.' : 'Die Fassade hat jetzt ein Fenster mehr.') : 'Banane unterwegs …';
     }
@@ -162,6 +169,17 @@
       input.focus({ preventScroll: true }); input.select();
     }
   });
+  for (const id of ['angle', 'power']) {
+    const input = $(id), wrapper = input.closest('.number-wrap');
+    wrapper.addEventListener('wheel', event => {
+      if (game.phase !== 'aiming' || $('settings').open || event.ctrlKey || event.metaKey || !event.deltaY) return;
+      event.preventDefault();
+      const step = event.shiftKey ? 5 : 1;
+      const direction = event.deltaY < 0 ? 1 : -1;
+      const value = Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : 0;
+      input.value = Math.max(0, Math.min(360, value + direction * step));
+    }, { passive: false });
+  }
   $('sound-toggle').addEventListener('click', () => {
     sound.setEnabled(!sound.enabled);
     $('sound-toggle').setAttribute('aria-pressed', String(sound.enabled));
@@ -187,12 +205,11 @@
   });
   function frame(time) {
     const dt = previousTime ? Math.min((time - previousTime) / 1000, .05) : 0; previousTime = time;
-    if (!$('settings').open && !document.hidden) game.update(dt);
+    if (!$('settings').open && !document.hidden) { game.update(dt); updateAmbientLights(dt); }
     if (previousPhase !== game.phase || uiDirty) {
       if (previousPhase !== game.phase) {
         if (game.phase === 'impact') sound.play(game.impact.type);
-        else if (game.phase === 'roundOver') sound.play('round');
-        else if (game.phase === 'matchOver') sound.play('match');
+        else if (game.phase === 'celebrating') sound.play(game.scores[game.winner] >= game.options.target ? 'champion' : 'cheer');
         else if (game.phase === 'aiming' && previousPhase === 'flying' && game.lastEvent === 'miss') sound.play('miss');
       }
       syncUI(previousPhase !== '' && game.phase === 'aiming'); previousPhase = game.phase;
