@@ -33,7 +33,8 @@ Die Startdatei ist `index.html`. Auch ein Unterordner funktioniert, da alle Asse
 
 ## Spielen
 
-- Ihr spielt abwechselnd am selben Gerät. Orange ist Spieler 1, Mint ist Spieler 2; Namen lassen sich unter **Neues Match** ändern.
+- Der animierte Willkommensbildschirm fragt Namen, gewonnene Runden zum Sieg und Gravitation ab. **Auf die Dächer!** startet das Match. Ihr spielt abwechselnd am selben Gerät: Orange ist Spieler 1, Mint ist Spieler 2. **Neues Match** öffnet die Einstellungen erneut.
+- Das Mausrad über Winkel oder Stärke verändert den Wert und fokussiert das entsprechende Feld. **Shift** verändert den Wert in Fünferschritten.
 - **Winkel** und **Stärke** eingeben, dann **Banane werfen** oder in einem Eingabefeld `Enter` drücken. `Tab` wechselt zwischen den Feldern.
 - Alternativ: **↑ / ↓** erhöhen/verringern den Winkel, **→ / ←** erhöhen/verringern die Stärke. Mit **Shift** geht es in Fünferschritten. **Leertaste** wirft; Gedrückthalten löst keinen weiteren Wurf aus. Die Kürzel funktionieren im Spielfeld und in den Wurffeldern; im Einstellungsdialog bleibt die normale Tastatureingabe erhalten.
 - Für beide Spieler zeigt **0° zum Gegner**, **90° senkrecht nach oben**. Winkel und Stärke erlauben jeweils ganze Zahlen von 0 bis 360. Zum Einstieg eignen sich etwa 45–65° und Stärke 60–85; Skyline und Wind entscheiden über den Treffer.
@@ -43,7 +44,8 @@ Die Startdatei ist `index.html`. Auch ein Unterordner funktioniert, da alle Asse
 - Nach einem Treffer startet **Nächste Runde** eine neue Skyline mit neuem Wind. Die Wurfreihenfolge wechselt weiter.
 - Zuerst feiert der Sieger 2,4 Sekunden auf seinem Dach mit abwechselnd erhobenen Armen. Im anschließenden Ergebnisdialog jubelt er weiter. Explosionen zeigen einen kurzen Feuerball, aufsteigenden Rauch, Funken und fallende Trümmer. Bei aktivierter Systemoption „Bewegung reduzieren“ sind die Effekte zurückgenommen und die Siegerpose statisch.
 - Wer das eingestellte Punkteziel zuerst erreicht, gewinnt. **Revanche spielen** startet mit denselben Namen und Einstellungen bei 0 : 0. **Neues Match** erlaubt andere Einstellungen und setzt das Spiel zurück.
-- Einstellungen pausieren eine laufende Flugbahn. Beim Wechsel in einen anderen Browser-Tab pausiert das Spiel ebenfalls. Neuladen setzt das Match zurück; es gibt absichtlich keinen Spielstandspeicher.
+- Einstellungen pausieren eine laufende Flugbahn. Beim Wechsel in einen anderen Browser-Tab pausiert das Spiel ebenfalls. Der aktuelle Zustand wird in `sessionStorage` gespeichert: Namen, Regeln, Punkte, Skyline mit Schäden und Fensterlichtern, Wind, Eingabewerte und eine laufende Flugbahn werden nach einem Reload wiederhergestellt. Eine neue Browser-Session beginnt mit dem Willkommensbildschirm. Wenn der Browser Speicherung blockiert, bleibt das Spiel ohne Speichern spielbar.
+- Der Himmel zeigt einen warmen Sonnenuntergang mit langsam ziehenden Pixelwolken. Einzelne Fenster wechseln gelegentlich ihre Beleuchtung. Die Systemoption „Bewegung reduzieren“ hält diese Umgebungseffekte an.
 
 Gravitation: Standard **9,8 m/s²**, einstellbar von **0,5 bis 30**. Punkteziel: **1 bis 99**, Standard **3**. Ein Wurf oberhalb des Bildschirms wird mit einem Pfeil angezeigt; weit außerhalb des sichtbaren Bereichs läuft die Flugzeit schneller ab.
 
@@ -71,6 +73,6 @@ Die Tests prüfen Fluggleichungen, Wind und Gravitation, 100 erzeugte Skylines, 
 
 Zusätzlich im Browser geprüft: Namens- und Zieländerung, Eingabesperre während des Wurfs, Fehlwurf, Selbsttreffer per Enter, Siegdialog und Revanche. Die Layoutprüfung unter `tests/responsive.html` enthält 320 und 390 Pixel breite Mobilansichten sowie ein Desktopfenster mit 1000 × 720 Pixeln. Der Browserdurchlauf erfolgte über den lokalen HTTP-Server; der direkte Dateistart wurde nicht automatisiert geprüft.
 
-Die Erweiterung ist mit 17 automatischen Tests abgesichert, einschließlich der gesperrten Eingabe während der Jubelphase und des anschließenden Matchendes. Im Browser wurden Pfeiltasten, Shift-Schritte, Eingabegrenzen, Leertastenwurf, ungestörte Texteingabe im Dialog sowie Ton an/aus geprüft. `tests/audio.html` rendert alle sechs Effekte über Web Audio und prüft deren Signalpegel sowie die Stummschaltung. `tests/visuals.html` zeigt die Gorilla-Posen vergrößert und die Explosionen zu verschiedenen Zeitpunkten.
+Die Erweiterung ist mit 21 automatischen Tests abgesichert, einschließlich der gesperrten Eingabe während der Jubelphase, der Länge der Siegesmelodien und der Session-Wiederherstellung bei Gebäudeschäden, während eines Flugs und während des Jubels. Frühere Browserprüfungen deckten Pfeiltasten, Shift-Schritte, Eingabegrenzen, Leertastenwurf, Texteingabe im Dialog sowie Ton an/aus ab. Die aktuelle Gestaltung des Startbildschirms und der Fokuswechsel per Mausrad sind noch nicht im Browser nachgeprüft. `tests/audio.html` rendert acht Effekte über Web Audio und prüft deren Signalpegel sowie die Stummschaltung. `tests/visuals.html` zeigt die Gorilla-Posen vergrößert und die Explosionen zu verschiedenen Zeitpunkten.
 
 Aktuelle Desktop- und Mobilbrowser mit Canvas und HTML-Dialogen werden vorausgesetzt. Die Seite benötigt während des Spielens keine Netzwerkanfragen; lediglich der freiwillige Link zum Original öffnet GitHub.

@@ -13,6 +13,19 @@
   const colors = ['#f3854e', '#b9d4b6'];
   let drawnRound = 0, drawnTerrain = -1, previousPhase = '', previousTime = 0, uiDirty = true, ambientTimer = 3.5;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const sessionKey = 'gorillas-session-v1';
+  let started = false, savedInputs = null, saveTimer = 0;
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(sessionKey));
+    if (saved && game.restore(saved.game)) {
+      started = true; savedInputs = saved.inputs;
+      sound.enabled = saved.sound !== false;
+    }
+  } catch { /* Storage may be unavailable or an older save invalid. */ }
+  function saveSession() {
+    if (!started) return;
+    try { sessionStorage.setItem(sessionKey, JSON.stringify({ game: game.snapshot(), inputs: [$('angle').value, $('power').value], sound: sound.enabled })); } catch { /* Playing also works without storage. */ }
+  }
 
   function buildCity() {
     cityCtx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -86,9 +99,16 @@
   }
   function draw(time) {
     ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = '#eeb59a'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    ctx.fillStyle = '#e8a38d'; ctx.fillRect(0, 142, WIDTH, 104);
-    ctx.fillStyle = '#db9485'; ctx.fillRect(0, 246, WIDTH, 174);
+    const sky = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+    sky.addColorStop(0, '#a6b4bc'); sky.addColorStop(.28, '#eab69f'); sky.addColorStop(.66, '#efa58b'); sky.addColorStop(1, '#c98482');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    const drift = reducedMotion ? 0 : time / 1800;
+    for (let i = 0; i < 6; i++) {
+      const x = ((i * 157 + drift * (i % 2 ? .6 : 1)) % (WIDTH + 140)) - 90, y = 32 + (i * 37) % 110;
+      ctx.fillStyle = '#ffe4cb55'; ctx.fillRect(Math.round(x), y, 80 + i * 7, 5);
+      ctx.fillRect(Math.round(x + 17), y - 5, 46 + i * 4, 5);
+      ctx.fillStyle = '#fff1d52b'; ctx.fillRect(Math.round(x - 24), y + 5, 132, 3);
+    }
     // Quiet, non-interactive skyline sits behind the playfield.
     ctx.fillStyle = '#b58e87';
     for (let i = 0; i < 23; i++) {
@@ -105,6 +125,25 @@
       portrait.clearRect(0, 0, 144, 144); portrait.save(); portrait.scale(3, 3);
       const pose = reducedMotion ? 'both' : ['left', 'both', 'right', 'both'][Math.floor(time / 220) % 4];
       drawGorilla(portrait, 24, 9, game.winner, pose); portrait.restore();
+    }
+    if ($('settings').open) {
+      const preview = $('welcome-art').getContext('2d');
+      preview.clearRect(0, 0, 400, 230);
+      preview.fillStyle = '#ebae90'; preview.fillRect(0, 0, 400, 230);
+      preview.fillStyle = '#ffdf96'; preview.beginPath(); preview.arc(205, 72, 34, 0, Math.PI * 2); preview.fill();
+      for (let i = 0; i < 9; i++) {
+        const h = 35 + (i * 37) % 65;
+        preview.fillStyle = i % 2 ? '#677c79' : '#405b62'; preview.fillRect(i * 49 - 12, 230 - h, 45, h);
+        preview.fillStyle = '#f3d3a0';
+        for (let x = 0; x < 3; x++) for (let y = 0; y < h - 15; y += 14) preview.fillRect(i * 49 - 5 + x * 11, 240 - h + y, 3, 5);
+      }
+      preview.fillStyle = '#283e46'; preview.fillRect(28, 169, 96, 61); preview.fillRect(276, 169, 96, 61);
+      preview.save(); preview.scale(2, 2);
+      const pose = reducedMotion ? 'both' : ['left', 'both', 'right', 'both'][Math.floor(time / 350) % 4];
+      drawGorilla(preview, 38, 50, 0, pose); drawGorilla(preview, 162, 50, 1, pose); preview.restore();
+      const t = reducedMotion ? .5 : (time % 2800) / 2800;
+      preview.save(); preview.translate(80 + 240 * t, 92 - Math.sin(t * Math.PI) * 70); preview.rotate(t * 10);
+      preview.fillStyle = '#ffe18b'; preview.font = 'bold 30px monospace'; preview.fillText('◡', -9, 0); preview.restore();
     }
   }
   function syncUI(focus = false) {
@@ -178,6 +217,7 @@
       const direction = event.deltaY < 0 ? 1 : -1;
       const value = Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : 0;
       input.value = Math.max(0, Math.min(360, value + direction * step));
+      input.focus({ preventScroll: true }); input.select(); saveSession();
     }, { passive: false });
   }
   $('sound-toggle').addEventListener('click', () => {
@@ -197,11 +237,13 @@
     $('settings').showModal();
   });
   $('settings-close').addEventListener('click', () => $('settings').close());
+  $('settings').addEventListener('cancel', event => { if (!started) event.preventDefault(); });
   $('settings-form').addEventListener('submit', event => {
     event.preventDefault();
     sound.stop();
     game.reset({ names: [$('setting-name-0').value, $('setting-name-1').value], target: Number($('setting-target').value), gravity: Number($('setting-gravity').value) });
-    $('settings').close(); drawnTerrain = -1; syncUI(true);
+    started = true; $('settings-close').hidden = false;
+    sound.play('round'); $('settings').close(); drawnTerrain = -1; syncUI(true); saveSession();
   });
   function frame(time) {
     const dt = previousTime ? Math.min((time - previousTime) / 1000, .05) : 0; previousTime = time;
@@ -215,7 +257,17 @@
       syncUI(previousPhase !== '' && game.phase === 'aiming'); previousPhase = game.phase;
     }
     draw(time); requestAnimationFrame(frame);
+    saveTimer += dt;
+    if (saveTimer >= .5) { saveTimer = 0; saveSession(); }
   }
   document.addEventListener('visibilitychange', () => { previousTime = 0; if (document.hidden) sound.stop(); });
-  syncUI(); requestAnimationFrame(frame);
+  window.addEventListener('pagehide', saveSession);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) saveSession(); });
+  for (const id of ['angle', 'power']) $(id).addEventListener('input', saveSession);
+  syncUI();
+  if (savedInputs && game.phase === 'aiming') { $('angle').value = savedInputs[0]; $('power').value = savedInputs[1]; }
+  previousPhase = game.phase;
+  $('sound-toggle').setAttribute('aria-pressed', String(sound.enabled)); $('sound-label').textContent = sound.enabled ? 'Ton an' : 'Ton aus';
+  if (!started) { $('settings-close').hidden = true; $('settings').showModal(); }
+  requestAnimationFrame(frame);
 })();

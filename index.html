@@ -52,17 +52,18 @@
     <footer><span>EINE HOMMAGE AN QBASIC GORILLAS · 1990</span><a href="https://github.com/pmachapman/basic-samples/blob/master/QBASIC/GORILLA.BAS" target="_blank" rel="noopener noreferrer">Das Original <span aria-hidden="true">↗</span></a><span>WENIG PIXEL. VIEL GEFÜHL.</span></footer>
   </main>
   <dialog id="settings" aria-labelledby="settings-title">
+    <div class="welcome-scene"><span class="welcome-kicker">GORILLAS / EST. 1990</span><h2>Die Stadt<br>gehört euch.</h2><canvas id="welcome-art" width="400" height="230" aria-hidden="true"></canvas><span class="welcome-caption">ZWEI GORILLAS. EIN DUELL ÜBER DEN DÄCHERN.</span></div>
     <form id="settings-form">
       <div class="dialog-top"><span class="eyebrow">FRISCHE SKYLINE. NEUE CHANCE.</span><button id="settings-close" type="button" class="close-button" aria-label="Einstellungen schließen">×</button></div>
-      <h2 id="settings-title">Auf die Dächer.</h2><p class="dialog-description">Zwei Spieler an einem Bildschirm. Ein Treffer, ein Punkt.</p>
+      <h2 id="settings-title">Bereit zum Abwurf?</h2><p class="dialog-description">Schnappt euch die Tastatur. Wählt eure Namen und legt fest, wie euer Duell aussehen soll.</p>
       <div class="settings-grid">
         <label>Spieler 1<input id="setting-name-0" value="Spieler 1" maxlength="18" autocomplete="off"></label>
         <label>Spieler 2<input id="setting-name-1" value="Spieler 2" maxlength="18" autocomplete="off"></label>
-        <label>Punkte zum Sieg<input id="setting-target" type="number" min="1" max="99" value="3" step="1" required></label>
+        <label>Gewonnene Runden zum Sieg<input id="setting-target" type="number" min="1" max="99" value="3" step="1" required></label>
         <label>Gravitation (m/s²)<input id="setting-gravity" type="number" min="0.5" max="30" value="9.8" step="0.1" required></label>
       </div>
-      <p class="settings-note">Erde: 9,8 · Mond: 1,6. Ein neues Match setzt beide Punktestände zurück.</p>
-      <button class="primary-button" type="submit">Match starten <span aria-hidden="true">→</span></button>
+      <p class="settings-note">Ein Treffer gewinnt die Runde. Gravitation: Erde 9,8 · Mond 1,6. Ein neues Match beginnt bei 0 : 0.</p>
+      <button class="primary-button welcome-start" type="submit">Auf die Dächer! <span aria-hidden="true">↗</span></button>
     </form>
   </dialog>
   <noscript><p class="noscript">Bitte aktiviere JavaScript, um Gorillas zu spielen.</p></noscript>

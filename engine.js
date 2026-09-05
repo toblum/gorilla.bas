@@ -54,6 +54,29 @@
       this.lastShots = [null, null]; this.newRound();
     }
     integer(min, max) { return min + Math.floor(this.random() * (max - min + 1)); }
+    snapshot() {
+      const { random, terrain, ...state } = this;
+      return JSON.parse(JSON.stringify({ version: 1, ...state }));
+    }
+    restore(state) {
+      if (!state || state.version !== 1 || !['aiming', 'flying', 'impact', 'celebrating', 'roundOver', 'matchOver'].includes(state.phase)) return false;
+      if (!Array.isArray(state.buildings) || state.buildings.length < 3 || state.buildings.length > 30 || !Array.isArray(state.craters) || !Array.isArray(state.gorillas) || state.gorillas.length !== 2) return false;
+      if (!state.options || !Array.isArray(state.options.names) || !Array.isArray(state.scores) || state.scores.length !== 2 || ![0, 1].includes(state.turn) || !Number.isInteger(state.round)) return false;
+      if (!Array.isArray(state.lastShots) || (state.phase === 'flying' && (!state.shot || !Array.isArray(state.shot.trail))) || (['impact', 'celebrating', 'roundOver', 'matchOver'].includes(state.phase) && !state.impact)) return false;
+      if (state.options.names.length !== 2 || !state.options.names.every(n => typeof n === 'string') || !Number.isFinite(state.options.gravity) || state.options.gravity < .5 || state.options.gravity > 30 || !Number.isInteger(state.options.target) || state.options.target < 1 || state.options.target > 99) return false;
+      if (!state.scores.every(n => Number.isInteger(n) && n >= 0) || !Number.isFinite(state.wind) || !Number.isFinite(state.celebrationAge) || ![null, 0, 1].includes(state.winner)) return false;
+      if (['celebrating', 'roundOver', 'matchOver'].includes(state.phase) && state.winner === null) return false;
+      if (state.gorillas.some(g => !g || ![g.x, g.y].every(Number.isFinite) || typeof g.alive !== 'boolean') || state.craters.some(c => !c || ![c.x, c.y, c.radius].every(Number.isFinite) || c.radius <= 0)) return false;
+      if (state.shot && (!['startX', 'startY', 'x', 'y', 'vx', 'vy', 'time'].every(k => Number.isFinite(state.shot[k])) || !Array.isArray(state.shot.trail))) return false;
+      if (state.impact && (!['building', 'gorilla'].includes(state.impact.type) || ![state.impact.x, state.impact.y, state.impact.age].every(Number.isFinite))) return false;
+      if (state.buildings.some(b => ![b.x, b.y, b.width, b.height, b.color].every(Number.isInteger) || b.x < 0 || b.y < 0 || b.x + b.width > WIDTH || b.y + b.height > HEIGHT || b.color < 0 || b.color > 3 || !Array.isArray(b.windows))) return false;
+      const copy = JSON.parse(JSON.stringify(state));
+      for (const key of ['options', 'scores', 'turn', 'round', 'lastShots', 'phase', 'shot', 'impact', 'winner', 'sunHit', 'lastEvent', 'celebrationAge', 'buildings', 'gorillas', 'wind']) this[key] = copy[key];
+      this.terrain = new Uint8Array(WIDTH * HEIGHT); this.craters = [];
+      this.buildings.forEach((b, i) => { for (let y = b.y; y < b.y + b.height; y++) this.terrain.fill(i + 1, y * WIDTH + b.x, y * WIDTH + b.x + b.width); });
+      for (const c of copy.craters) this.destroy(c.x, c.y, c.radius);
+      return true;
+    }
     newRound() {
       this.round++; this.phase = 'aiming'; this.shot = null; this.impact = null;
       this.winner = null; this.sunHit = false; this.lastEvent = 'start'; this.celebrationAge = 0;
