@@ -3,8 +3,8 @@
   'use strict';
   const { SPRITE } = root.Gorillas;
   const FUR = [
-    { '#': '#d77b39', s: '#a45e33', h: '#e89b50', c: '#de8c4a', f: '#c7996c', d: '#493627' },
-    { '#': '#8aab92', s: '#5f806a', h: '#adc49e', c: '#99b49b', f: '#adb69a', d: '#364c3e' }
+    { '#': '#d77b39', s: '#a45e33', h: '#e89b50', c: '#de8c4a', p: '#e39554', f: '#c7996c', d: '#493627' },
+    { '#': '#8aab92', s: '#5f806a', h: '#adc49e', c: '#99b49b', p: '#a2bba0', f: '#adb69a', d: '#364c3e' }
   ];
   const poses = new Map();
   function posePixels(pose) {

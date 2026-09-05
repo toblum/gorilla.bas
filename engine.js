@@ -20,24 +20,26 @@
       box(8, 27, 6, 5, 's'); box(6, 31, 8, 3, 's');
       box(9, 27, 4, 5, '#'); box(7, 32, 6, 1, 'h');
     }
-    // Broad chest with shallow muscle contours, not separate dark patches.
+    // The original DrawGorilla defines the pecs with two inward quarter-arcs.
+    // Keep a continuous broad chest and let these open contours define its mass.
     rect(6, 11, 20, 9, '#'); rect(7, 13, 18, 6, 'c');
     rect(8, 12, 16, 2, 'c'); rect(9, 19, 14, 2, 'c');
-    rect(9, 20, 5, 1, 's'); rect(18, 20, 5, 1, 's');
+    for (const [x, y] of [[15, 13], [15, 14], [14, 15], [14, 16], [13, 17], [11, 18], [12, 18], [9, 19], [10, 19]]) {
+      pixels[y][x] = 's'; pixels[y][31 - x] = 's';
+    }
     rect(12, 25, 8, 1, 's');
-    // Compact head and continuous muzzle. Dark pixels are individual features,
-    // never an eye mask or an outline around the whole face.
+    // Broad, low crown with one-pixel softened corners and separate eyes.
     const head = [
-      '.....######.....',
+      '....########....',
       '...##########...',
-      '..############..',
-      '.###ssssssss###.',
-      '.###fdffffdf###.',
-      '.###ffffffff###.',
-      '.###ffssssff###.',
-      '..##ffffffff##..',
-      '..##ffffffff##..',
-      '...##ffffff##...',
+      '...##########...',
+      '..####ssss####..',
+      '..###fdffdf###..',
+      '..##ssffffss##..',
+      '...#ffsffsff#...',
+      '...#ffffffff#...',
+      '...#fffssfff#...',
+      '....########....',
       '....########....'
     ];
     head.forEach((row, y) => [...row].forEach((color, x) => { if (color !== '.') pixels[y][x + 8] = color; }));
