@@ -17,7 +17,7 @@ Dann [http://127.0.0.1:8080](http://127.0.0.1:8080) öffnen. Der lokale Server e
 
 ## Selbst hosten
 
-Diese sieben Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
+Diese acht Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
 
 ```text
 index.html
@@ -25,6 +25,7 @@ style.css
 engine.js
 sound.js
 visuals.js
+finale.js
 game.js
 favicon.svg
 ```
@@ -43,7 +44,8 @@ Die Startdatei ist `index.html`. Auch ein Unterordner funktioniert, da alle Asse
 - Gebäude bekommen bleibende Löcher. Ein direkter Gorillatreffer bringt dem Gegner des getroffenen Gorillas einen Punkt – auch bei einem Selbsttreffer. Sehr geringe Stärke (0 oder 1) trifft den Werfer selbst.
 - Nach einem Treffer startet **Nächste Runde** eine neue Skyline mit neuem Wind. Die Wurfreihenfolge wechselt weiter.
 - Zuerst feiert der Sieger 2,4 Sekunden auf seinem Dach mit abwechselnd erhobenen Armen. Im anschließenden Ergebnisdialog jubelt er weiter. Explosionen zeigen einen kurzen Feuerball, aufsteigenden Rauch, Funken und fallende Trümmer. Bei aktivierter Systemoption „Bewegung reduzieren“ sind die Effekte zurückgenommen und die Siegerpose statisch.
-- Wer das eingestellte Punkteziel zuerst erreicht, gewinnt. **Revanche spielen** startet mit denselben Namen und Einstellungen bei 0 : 0. **Neues Match** erlaubt andere Einstellungen und setzt das Spiel zurück.
+- Wer das eingestellte Punkteziel zuerst erreicht, gewinnt. Danach hebt der Sieger in einer 20 Sekunden langen Bananen-Raumfahrt zum Mond ab. **Zum Startbildschirm** oder **Escape** überspringt das Finale jederzeit. Anschließend erscheint automatisch der Startbildschirm mit den bisherigen Namen und Regeln; das nächste Match beginnt bei 0 : 0. Auch ein Reload während des Finales setzt dessen Fortschritt fort.
+- Im Startbildschirm verändert das Mausrad das Rundenziel in Einerschritten und die Gravitation in 0,1-Schritten. **Shift** verfünffacht die Schritte. Das veränderte Feld erhält den Fokus.
 - Einstellungen pausieren eine laufende Flugbahn. Beim Wechsel in einen anderen Browser-Tab pausiert das Spiel ebenfalls. Der aktuelle Zustand wird in `sessionStorage` gespeichert: Namen, Regeln, Punkte, Skyline mit Schäden und Fensterlichtern, Wind, Eingabewerte und eine laufende Flugbahn werden nach einem Reload wiederhergestellt. Eine neue Browser-Session beginnt mit dem Willkommensbildschirm. Wenn der Browser Speicherung blockiert, bleibt das Spiel ohne Speichern spielbar.
 - Der Himmel zeigt einen warmen Sonnenuntergang mit langsam ziehenden Pixelwolken. Einzelne Fenster wechseln gelegentlich ihre Beleuchtung. Die Systemoption „Bewegung reduzieren“ hält diese Umgebungseffekte an.
 

@@ -16,21 +16,31 @@
       const box = (x, y, w, h, color) => rect(right ? 32 - x - w : x, y, w, h, color);
       box(3, 11, 6, 7, 's'); box(1, 16, 6, 10, 's'); box(0, 24, 6, 6, 's');
       box(4, 12, 4, 6, '#'); box(2, 17, 4, 9, '#'); box(1, 25, 4, 4, '#');
-      box(4, 13, 2, 4, 'h'); box(2, 26, 1, 2, 'h');
+      box(4, 13, 2, 4, '#'); box(2, 26, 1, 2, 'h');
       box(8, 27, 6, 5, 's'); box(6, 31, 8, 3, 's');
       box(9, 27, 4, 5, '#'); box(7, 32, 6, 1, 'h');
     }
     // Broad chest with shallow muscle contours, not separate dark patches.
-    rect(9, 12, 14, 2, 'h'); rect(8, 14, 16, 5, '#');
-    rect(15, 14, 2, 4, 's'); rect(9, 19, 5, 1, 's'); rect(18, 19, 5, 1, 's');
-    rect(14, 18, 1, 1, 's'); rect(17, 18, 1, 1, 's');
-    rect(12, 22, 8, 1, 'h'); rect(12, 25, 8, 1, 's');
-    // Low brow, individual eyes, cheek pads, nostrils and muzzle.
-    rect(11, 0, 10, 2, 's'); rect(9, 2, 14, 7, 's'); rect(8, 4, 16, 3, 's');
-    rect(11, 1, 10, 2, '#'); rect(10, 3, 12, 5, '#');
-    rect(11, 3, 10, 2, 'd'); rect(12, 4, 2, 1, 'f'); rect(18, 4, 2, 1, 'f');
-    rect(12, 6, 8, 3, 'f'); rect(14, 6, 1, 1, 'd'); rect(17, 6, 1, 1, 'd');
-    rect(14, 8, 4, 1, 'd');
+    rect(6, 11, 20, 9, '#'); rect(7, 13, 18, 6, 'c');
+    rect(8, 12, 16, 2, 'c'); rect(9, 19, 14, 2, 'c');
+    rect(9, 20, 5, 1, 's'); rect(18, 20, 5, 1, 's');
+    rect(12, 25, 8, 1, 's');
+    // Compact head and continuous muzzle. Dark pixels are individual features,
+    // never an eye mask or an outline around the whole face.
+    const head = [
+      '.....######.....',
+      '...##########...',
+      '..############..',
+      '.###ssssssss###.',
+      '.###fdffffdf###.',
+      '.###ffffffff###.',
+      '.###ffssssff###.',
+      '..##ffffffff##..',
+      '..##ffffffff##..',
+      '...##ffffff##...',
+      '....########....'
+    ];
+    head.forEach((row, y) => [...row].forEach((color, x) => { if (color !== '.') pixels[y][x + 8] = color; }));
     return pixels.map(row => row.join(''));
   })();
   const clamp = (n, min, max) => Math.max(min, Math.min(max, n));

@@ -48,3 +48,15 @@ test('Victory melodies cover the full celebration animation', () => {
     assert.ok(context.voices.at(-1).stopTime - context.voices[0].startTime > 2.3);
   }
 });
+test('Finale music lasts twenty seconds, resumes at an offset and stops on skip', () => {
+  const context = audioStub(), sound = new Sound(() => context);
+  sound.play('finale');
+  const end = context.voices.at(-1).stopTime;
+  assert.ok(Math.abs(end - context.currentTime - 20) < .03);
+  sound.stop(); assert.equal(sound.voices.size, 0);
+  assert.ok(context.voices.every(v => v.stopTime === undefined));
+  const resumed = audioStub(), music = new Sound(() => resumed);
+  music.play('finale', 12.4);
+  assert.ok(Math.abs(resumed.voices.at(-1).stopTime - resumed.currentTime - 7.6) < .04);
+  music.setEnabled(false); assert.equal(music.voices.size, 0);
+});

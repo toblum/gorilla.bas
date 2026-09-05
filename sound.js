@@ -12,6 +12,13 @@
     cheer: [[262, 262, .16], [330, 330, .16], [392, 392, .16], [330, 330, .16], [294, 294, .16], [349, 349, .16], [440, 440, .16], [349, 349, .16], [262, 262, .16], [330, 330, .16], [392, 392, .16], [523, 523, .16], [392, 392, .16], [523, 523, .16]],
     champion: [[330, 330, .16], [392, 392, .16], [523, 523, .16], [659, 659, .16], [523, 523, .16], [659, 659, .16], [784, 784, .16], [659, 659, .16], [523, 523, .16], [784, 784, .16], [1047, 1047, .16], [784, 784, .16], [1047, 1047, .16], [1047, 1047, .16]]
   };
+  // Four melodic phrases, then a held tonic: a complete twenty-second ending.
+  EFFECTS.finale = [
+    [523,659,784,1047,988,784,659,784,880,784,659,587,659,784,1047,784],
+    [698,880,1047,1175,1047,880,698,880,784,659,523,659,587,659,784,988],
+    [523,659,784,1047,1319,1175,1047,784,880,1047,1175,1047,880,784,659,784],
+    [698,880,1047,880,784,988,1175,988,1047,784,659,784,1047,1319,1568,1319]
+  ].flat().map(hz => [hz, hz, .285]).concat([[1047, 1047, .785]]);
   class Sound {
     constructor(createContext = () => new (root.AudioContext || root.webkitAudioContext)()) {
       this.createContext = createContext; this.context = null;
@@ -36,18 +43,22 @@
       for (const voice of this.voices) { try { voice.stop(); } catch { /* Already ended. */ } }
       this.voices.clear();
     }
-    play(effect) {
+    play(effect, offset = 0) {
       if (!this.enabled || !EFFECTS[effect]) return;
       this.unlock();
       if (!this.available || !this.context) return;
       const context = this.context;
-      let time = context.currentTime + .01;
-      for (const [startHz, endHz, duration] of EFFECTS[effect]) {
+      let time = context.currentTime + .01, elapsed = 0;
+      offset = Math.max(0, Number(offset) || 0);
+      for (const [startHz, endHz, noteDuration] of EFFECTS[effect]) {
+        const skipped = Math.max(0, offset - elapsed); elapsed += noteDuration + .015;
+        if (skipped >= noteDuration) continue;
+        const duration = noteDuration - skipped;
         const voice = context.createOscillator(), gain = context.createGain();
         voice.type = 'square'; voice.frequency.setValueAtTime(startHz, time);
         voice.frequency.exponentialRampToValueAtTime(endHz, time + duration);
         gain.gain.setValueAtTime(0, time);
-        gain.gain.linearRampToValueAtTime(.055, time + .006);
+        gain.gain.linearRampToValueAtTime(effect === 'finale' ? .035 : .055, time + Math.min(.006, duration / 2));
         gain.gain.exponentialRampToValueAtTime(.001, time + duration);
         gain.gain.setValueAtTime(0, time + duration + .005);
         voice.connect(gain); gain.connect(context.destination);

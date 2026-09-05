@@ -11,6 +11,7 @@
   <script src="engine.js" defer></script>
   <script src="sound.js" defer></script>
   <script src="visuals.js" defer></script>
+  <script src="finale.js" defer></script>
   <script src="game.js" defer></script>
 </head>
 <body>
@@ -65,6 +66,12 @@
       <p class="settings-note">Ein Treffer gewinnt die Runde. Gravitation: Erde 9,8 · Mond 1,6. Ein neues Match beginnt bei 0 : 0.</p>
       <button class="primary-button welcome-start" type="submit">Auf die Dächer! <span aria-hidden="true">↗</span></button>
     </form>
+  </dialog>
+  <dialog id="finale" aria-labelledby="finale-title" aria-describedby="finale-description">
+    <div class="finale-heading"><span class="eyebrow">MISSION: ÜBERTRIEBEN ERFOLGREICH</span><h2 id="finale-title"></h2><p id="finale-score"></p></div>
+    <canvas id="finale-art" width="800" height="400" role="img" aria-label="Der Sieger fliegt jubelnd auf einer riesigen Bananenrakete zum Mond."></canvas>
+    <div class="finale-bottom"><p id="finale-description">Die Stadt war nicht genug.<br>Nächster Halt: Bananenmond.</p><button class="primary-button" id="finale-skip" type="button">Zum Startbildschirm →</button></div>
+    <div class="finale-progress" aria-hidden="true"><span id="finale-progress"></span></div>
   </dialog>
   <noscript><p class="noscript">Bitte aktiviere JavaScript, um Gorillas zu spielen.</p></noscript>
 </body>

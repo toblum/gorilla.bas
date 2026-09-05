@@ -3,8 +3,8 @@
   'use strict';
   const { SPRITE } = root.Gorillas;
   const FUR = [
-    { '#': '#d77b39', s: '#99502c', h: '#eea454', f: '#ffd197', d: '#352d29' },
-    { '#': '#8aab92', s: '#506f60', h: '#bdd1a8', f: '#e6d9b2', d: '#273d36' }
+    { '#': '#d77b39', s: '#a45e33', h: '#e89b50', c: '#de8c4a', f: '#c7996c', d: '#493627' },
+    { '#': '#8aab92', s: '#5f806a', h: '#adc49e', c: '#99b49b', f: '#adb69a', d: '#364c3e' }
   ];
   const poses = new Map();
   function posePixels(pose) {
@@ -82,5 +82,17 @@
     }
     ctx.restore();
   }
-  root.GorillaVisuals = { drawGorilla, drawExplosion };
+  function drawBanana(ctx, x, y, rotation = 0) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rotation);
+    ctx.fillStyle = '#8c6134';
+    ctx.beginPath(); ctx.moveTo(-16, -10); ctx.bezierCurveTo(-14, 17, 13, 21, 19, -7);
+    ctx.bezierCurveTo(9, 5, -3, 8, -16, -10); ctx.fill();
+    ctx.fillStyle = '#ffdc62';
+    ctx.beginPath(); ctx.moveTo(-14, -8); ctx.bezierCurveTo(-11, 15, 12, 18, 17, -4);
+    ctx.bezierCurveTo(7, 8, -4, 9, -14, -8); ctx.fill();
+    ctx.strokeStyle = '#fff0a2'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-10, 3); ctx.quadraticCurveTo(2, 16, 12, 5); ctx.stroke();
+    ctx.fillStyle = '#665139'; ctx.fillRect(-17, -14, 4, 7); ctx.fillRect(17, -9, 3, 4);
+    ctx.restore();
+  }
+  root.GorillaVisuals = { drawGorilla, drawExplosion, drawBanana };
 })(globalThis);

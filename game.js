@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const { Game, WIDTH, HEIGHT, FLOOR } = window.Gorillas;
-  const { drawGorilla, drawExplosion } = window.GorillaVisuals;
+  const { drawGorilla, drawExplosion, drawBanana } = window.GorillaVisuals;
   const game = new Game();
   const sound = new window.GorillaSound();
   const $ = id => document.getElementById(id);
@@ -14,17 +14,33 @@
   let drawnRound = 0, drawnTerrain = -1, previousPhase = '', previousTime = 0, uiDirty = true, ambientTimer = 3.5;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const sessionKey = 'gorillas-session-v1';
-  let started = false, savedInputs = null, saveTimer = 0;
+  let started = false, savedInputs = null, saveTimer = 0, finale = null, savedFinaleAge = 0, sceneryTime = 0;
   try {
     const saved = JSON.parse(sessionStorage.getItem(sessionKey));
     if (saved && game.restore(saved.game)) {
-      started = true; savedInputs = saved.inputs;
+      started = saved.screen !== 'welcome'; savedInputs = saved.inputs; savedFinaleAge = saved.finaleAge || 0;
       sound.enabled = saved.sound !== false;
     }
   } catch { /* Storage may be unavailable or an older save invalid. */ }
   function saveSession() {
-    if (!started) return;
-    try { sessionStorage.setItem(sessionKey, JSON.stringify({ game: game.snapshot(), inputs: [$('angle').value, $('power').value], sound: sound.enabled })); } catch { /* Playing also works without storage. */ }
+    try { sessionStorage.setItem(sessionKey, JSON.stringify({ game: game.snapshot(), inputs: [$('angle').value, $('power').value], sound: sound.enabled, screen: started ? 'game' : 'welcome', finaleAge: finale?.age || 0 })); } catch { /* Playing also works without storage. */ }
+  }
+  function populateSettings() {
+    for (let i = 0; i < 2; i++) $(`setting-name-${i}`).value = game.options.names[i];
+    $('setting-target').value = game.options.target; $('setting-gravity').value = game.options.gravity;
+  }
+  function returnToWelcome() {
+    sound.stop(); $('finale').close(); finale = null; savedFinaleAge = 0;
+    started = false; game.reset(); drawnTerrain = -1; previousPhase = game.phase;
+    populateSettings(); $('settings-close').hidden = true; $('settings').showModal(); syncUI(); saveSession();
+  }
+  function startFinale() {
+    if (finale || !started) return;
+    $('finale-title').textContent = `${game.options.names[game.winner]} hebt ab!`;
+    $('finale-score').textContent = `MATCH GEWONNEN · ${game.scores[0]} : ${game.scores[1]}`;
+    finale = new window.GorillaFinale(returnToWelcome, savedFinaleAge);
+    sound.stop(); sound.play('finale', finale.age);
+    $('finale').showModal(); $('finale-skip').focus({ preventScroll: true });
   }
 
   function buildCity() {
@@ -102,12 +118,27 @@
     const sky = ctx.createLinearGradient(0, 0, 0, HEIGHT);
     sky.addColorStop(0, '#a6b4bc'); sky.addColorStop(.28, '#eab69f'); sky.addColorStop(.66, '#efa58b'); sky.addColorStop(1, '#c98482');
     ctx.fillStyle = sky; ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    const drift = reducedMotion ? 0 : time / 1800;
+    const drift = reducedMotion ? 0 : sceneryTime / 1800;
+    // A barely perceptible warm haze breathes over a forty-second cycle.
+    ctx.fillStyle = `rgba(255,221,166,${reducedMotion ? .035 : .035 + Math.sin(sceneryTime / 7000) * .015})`;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
     for (let i = 0; i < 6; i++) {
       const x = ((i * 157 + drift * (i % 2 ? .6 : 1)) % (WIDTH + 140)) - 90, y = 32 + (i * 37) % 110;
       ctx.fillStyle = '#ffe4cb55'; ctx.fillRect(Math.round(x), y, 80 + i * 7, 5);
       ctx.fillRect(Math.round(x + 17), y - 5, 46 + i * 4, 5);
       ctx.fillStyle = '#fff1d52b'; ctx.fillRect(Math.round(x - 24), y + 5, 132, 3);
+    }
+    // Distant scenery only: no collision, trail, marker or influence on a throw.
+    const passage = sceneryTime / 1000 % 145;
+    if (!reducedMotion && passage > 18 && passage < 98) {
+      const x = -75 + (passage - 18) / 80 * 950, y = 108 + Math.sin(passage / 19) * 2;
+      ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.globalAlpha = .22;
+      ctx.fillStyle = '#7b8589';
+      ctx.beginPath(); ctx.ellipse(0, 0, 29, 8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-20, 0); ctx.lineTo(-32, -12); ctx.lineTo(-29, 0); ctx.lineTo(-32, 10); ctx.closePath(); ctx.fill();
+      ctx.fillRect(-4, 8, 13, 4);
+      ctx.fillStyle = '#e0c5af'; ctx.fillRect(-19, -3, 36, 2);
+      ctx.restore();
     }
     // Quiet, non-interactive skyline sits behind the playfield.
     ctx.fillStyle = '#b58e87';
@@ -141,9 +172,12 @@
       preview.save(); preview.scale(2, 2);
       const pose = reducedMotion ? 'both' : ['left', 'both', 'right', 'both'][Math.floor(time / 350) % 4];
       drawGorilla(preview, 38, 50, 0, pose); drawGorilla(preview, 162, 50, 1, pose); preview.restore();
-      const t = reducedMotion ? .5 : (time % 2800) / 2800;
-      preview.save(); preview.translate(80 + 240 * t, 92 - Math.sin(t * Math.PI) * 70); preview.rotate(t * 10);
-      preview.fillStyle = '#ffe18b'; preview.font = 'bold 30px monospace'; preview.fillText('◡', -9, 0); preview.restore();
+      const flight = sceneryTime / 3400, turn = Math.floor(flight), t = reducedMotion ? .5 : flight % 1;
+      const direction = turn % 2 ? -1 : 1;
+      const progress = direction === 1 ? t : 1 - t;
+      preview.save(); preview.globalAlpha = reducedMotion ? 1 : Math.min(1, t * 12, (1 - t) * 12);
+      drawBanana(preview, 80 + 240 * progress, 91 - Math.sin(t * Math.PI) * 64, reducedMotion ? -.3 : direction * (t * Math.PI * 2 - .6));
+      preview.restore();
     }
   }
   function syncUI(focus = false) {
@@ -162,7 +196,7 @@
     $('wind-arrow').setAttribute('d', game.wind === 0 ? '' : `M70 8H${tip}M${head} 5L${tip} 8L${head} 11`);
     $('gravity-label').textContent = `g ${game.options.gravity.toLocaleString('de-DE')} m/s²`;
     for (const id of ['angle', 'power', 'throw']) $(id).disabled = !aiming;
-    $('result').hidden = !ended || celebrating;
+    $('result').hidden = !ended || celebrating || game.phase === 'matchOver';
     $('turn-label').textContent = ended ? (game.phase === 'matchOver' ? 'MATCH ENTSCHIEDEN' : 'RUNDE ENTSCHIEDEN') : `${game.options.names[game.turn].toLocaleUpperCase('de-DE')} ${aiming ? 'IST DRAN' : 'WIRFT'}`;
     if (aiming) {
       const last = game.lastShots[game.turn];
@@ -179,7 +213,8 @@
       $('continue').textContent = matchOver ? 'Revanche spielen →' : 'Nächste Runde →';
       $('message').textContent = celebrating ? `${name} feiert seinen Treffer!` : $('result-title').textContent;
       $('winner-portrait').setAttribute('aria-label', `${name} jubelt mit erhobenen Armen`);
-      if (!celebrating && !$('settings').open) $('continue').focus({ preventScroll: true });
+      if (!celebrating && game.phase !== 'matchOver' && !$('settings').open) $('continue').focus({ preventScroll: true });
+      if (game.phase === 'matchOver') startFinale();
     } else {
       $('message').textContent = game.phase === 'impact' ? (game.winner !== null ? 'Treffer! Das gibt einen Punkt.' : 'Die Fassade hat jetzt ein Fenster mehr.') : 'Banane unterwegs …';
     }
@@ -226,14 +261,26 @@
     $('sound-label').textContent = sound.enabled ? 'Ton an' : 'Ton aus';
     if (sound.enabled) sound.play('round');
   });
+  for (const id of ['setting-target', 'setting-gravity']) {
+    const input = $(id);
+    input.addEventListener('wheel', event => {
+      if (!$('settings').open || event.ctrlKey || event.metaKey || !event.deltaY) return;
+      event.preventDefault();
+      const step = Number(input.step) * (event.shiftKey ? 5 : 1);
+      const value = Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : Number(input.min);
+      input.value = Math.max(Number(input.min), Math.min(Number(input.max), value + (event.deltaY < 0 ? step : -step))).toFixed(id === 'setting-gravity' ? 1 : 0);
+      input.focus({ preventScroll: true }); input.select();
+    }, { passive: false });
+  }
+  $('finale-skip').addEventListener('click', () => finale?.skip());
+  $('finale').addEventListener('cancel', event => { event.preventDefault(); finale?.skip(); });
   $('continue').addEventListener('click', () => {
     sound.stop();
     if (game.continue()) { drawnTerrain = -1; syncUI(true); }
   });
   $('settings-open').addEventListener('click', () => {
     sound.stop();
-    for (let i = 0; i < 2; i++) $(`setting-name-${i}`).value = game.options.names[i];
-    $('setting-target').value = game.options.target; $('setting-gravity').value = game.options.gravity;
+    populateSettings();
     $('settings').showModal();
   });
   $('settings-close').addEventListener('click', () => $('settings').close());
@@ -247,7 +294,11 @@
   });
   function frame(time) {
     const dt = previousTime ? Math.min((time - previousTime) / 1000, .05) : 0; previousTime = time;
-    if (!$('settings').open && !document.hidden) { game.update(dt); updateAmbientLights(dt); }
+    if (!document.hidden) sceneryTime += dt * 1000;
+    if (!$('settings').open && !document.hidden) {
+      if (finale) finale.update(dt);
+      else if (started) { game.update(dt); updateAmbientLights(dt); }
+    }
     if (previousPhase !== game.phase || uiDirty) {
       if (previousPhase !== game.phase) {
         if (game.phase === 'impact') sound.play(game.impact.type);
@@ -257,10 +308,18 @@
       syncUI(previousPhase !== '' && game.phase === 'aiming'); previousPhase = game.phase;
     }
     draw(time); requestAnimationFrame(frame);
+    if (finale) {
+      finale.draw($('finale-art').getContext('2d'), game.winner, reducedMotion, drawGorilla);
+      $('finale-progress').style.width = `${Math.min(100, finale.age / window.GorillaFinale.DURATION * 100)}%`;
+    }
     saveTimer += dt;
     if (saveTimer >= .5) { saveTimer = 0; saveSession(); }
   }
-  document.addEventListener('visibilitychange', () => { previousTime = 0; if (document.hidden) sound.stop(); });
+  document.addEventListener('visibilitychange', () => {
+    previousTime = 0;
+    if (document.hidden) sound.stop();
+    else if (finale) sound.play('finale', finale.age);
+  });
   window.addEventListener('pagehide', saveSession);
   document.addEventListener('visibilitychange', () => { if (document.hidden) saveSession(); });
   for (const id of ['angle', 'power']) $(id).addEventListener('input', saveSession);
@@ -268,6 +327,6 @@
   if (savedInputs && game.phase === 'aiming') { $('angle').value = savedInputs[0]; $('power').value = savedInputs[1]; }
   previousPhase = game.phase;
   $('sound-toggle').setAttribute('aria-pressed', String(sound.enabled)); $('sound-label').textContent = sound.enabled ? 'Ton an' : 'Ton aus';
-  if (!started) { $('settings-close').hidden = true; $('settings').showModal(); }
+  if (!started) { populateSettings(); $('settings-close').hidden = true; $('settings').showModal(); }
   requestAnimationFrame(frame);
 })();

@@ -21,6 +21,9 @@
 @media(min-width:851px) and (min-height:650px) and (max-height:850px){.masthead{padding:16px 0 8px}.intro{padding:10px 0}}
 @media(max-width:640px){.masthead{padding:20px 0 12px}.intro{padding:14px 0 13px}.console{margin-top:12px}}
 .round-info{font-size:14px;line-height:1.4}.match-target{font-size:11px;color:#c9cfc5}.player-state{font-size:10px}
+dialog#finale{width:min(850px,calc(100% - 28px));padding:0;background:#1e303d;color:var(--paper);max-height:calc(100svh - 28px);overflow:auto;border-color:#637c7c}
+.finale-heading{text-align:center;padding:28px 20px 0}.finale-heading .eyebrow{color:#b9d4b6}.finale-heading h2{font-size:clamp(30px,5vw,58px);overflow-wrap:anywhere;color:#ffda70;margin:14px 0 10px}.finale-heading p{font-size:13px;color:#b9cac4;margin:0}.finale-bottom{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:8px 28px 26px}.finale-bottom p{font-size:13px;line-height:1.7;margin:0}.finale-bottom .primary-button{width:auto;flex-shrink:0}.finale-progress{height:4px;background:#38505a}.finale-progress span{display:block;height:100%;background:#ffda70;width:0}
+@media(max-width:640px){.finale-bottom{flex-direction:column;text-align:center;padding:14px 20px 24px;gap:16px}.finale-bottom .primary-button{width:100%}.finale-heading{padding-top:24px}.finale-heading .eyebrow{font-size:8px}}
 dialog#settings{width:min(900px,calc(100% - 32px));padding:0;max-height:calc(100svh - 32px);overflow:auto}
 dialog#settings[open]{display:grid;grid-template-columns:.9fr 1.1fr}
 .welcome-scene{background:#273e46;color:var(--paper);padding:30px 26px 22px;display:flex;flex-direction:column;overflow:hidden}
