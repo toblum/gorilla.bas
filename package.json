@@ -1,0 +1,10 @@
+{
+  "name": "gorillas-bas",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "build": "node scripts/build.mjs"
+  },
+  "engines": { "node": ">=22" }
+}
