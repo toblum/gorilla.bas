@@ -30,7 +30,15 @@ game.js
 favicon.svg
 ```
 
-Die Startdatei ist `index.html`. Auch ein Unterordner funktioniert, da alle Assets relativ verlinkt sind. Kein Backend, keine Datenbank und keine Umgebungsvariablen nötig. JavaScript-Dateien müssen als JavaScript ausgeliefert werden; normale Webserver tun das automatisch. `tests/` und diese Anleitung müssen nicht veröffentlicht werden. Es wurde keine externe Veröffentlichung vorgenommen.
+Die Startdatei ist `index.html`. Auch ein Unterordner funktioniert, da alle Assets relativ verlinkt sind. Kein Backend und keine Datenbank nötig. JavaScript-Dateien müssen als JavaScript ausgeliefert werden; normale Webserver tun das automatisch. `tests/` und diese Anleitung müssen nicht veröffentlicht werden.
+
+### Veröffentlichung mit Coolify
+
+Die öffentliche Adresse ist [gorillas.sparebytes.dev](https://gorillas.sparebytes.dev). Das Coolify-Projekt und die Anwendung heißen `gorillas.bas`; das GitHub-Repository heißt `toblum/gorilla.bas`.
+
+Jeder Push auf `main` löst über die vorhandene GitHub-App einen Build in Coolify aus. Nixpacks führt `npm test && npm run build` aus; anschließend liefert Nginx ausschließlich das Verzeichnis `/dist` über HTTPS aus. Pull-Request-Deployments sind deaktiviert.
+
+Der Build benötigt Node.js 22 oder neuer und kopiert nur die acht Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
 
 ## Spielen
 
