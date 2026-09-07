@@ -3,8 +3,9 @@
   'use strict';
   const EFFECTS = {
     throw: [[440, 880, .09], [660, 220, .13]],
-    building: [[170, 45, .12], [95, 30, .15], [60, 20, .13]],
-    gorilla: [[240, 80, .12], [180, 40, .16], [100, 25, .22]],
+    // Explosions get a short sub-bass thump, a cracking transient and a dusty tail.
+    building: [[112, 30, .18], [340, 78, .075], [82, 23, .22], [50, 16, .3]],
+    gorilla: [[165, 38, .19], [460, 102, .085], [110, 25, .25], [62, 16, .36]],
     miss: [[220, 110, .12], [110, 55, .15]],
     round: [[262, 262, .09], [330, 330, .09], [392, 392, .09], [523, 523, .22]],
     match: [[262, 262, .10], [330, 330, .10], [392, 392, .10], [523, 523, .15], [392, 392, .10], [659, 659, .28]],
@@ -58,7 +59,8 @@
         voice.type = 'square'; voice.frequency.setValueAtTime(startHz, time);
         voice.frequency.exponentialRampToValueAtTime(endHz, time + duration);
         gain.gain.setValueAtTime(0, time);
-        gain.gain.linearRampToValueAtTime(effect === 'finale' ? .035 : .055, time + Math.min(.006, duration / 2));
+        const volume = effect === 'finale' ? .035 : ['building', 'gorilla'].includes(effect) ? .098 : .055;
+        gain.gain.linearRampToValueAtTime(volume, time + Math.min(.006, duration / 2));
         gain.gain.exponentialRampToValueAtTime(.001, time + duration);
         gain.gain.setValueAtTime(0, time + duration + .005);
         voice.connect(gain); gain.connect(context.destination);
