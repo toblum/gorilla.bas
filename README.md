@@ -47,6 +47,7 @@ Der Build benötigt Node.js 22 oder neuer und kopiert nur die neun Spieldateien.
 - Die Einschlagsgeschwindigkeit bestimmt den Kraterradius: etwa 8 bis 15 Pixel statt eines festen Radius. Fallbewegung und Wind zählen mit; direkte Gorillatreffer bleiben tödlich.
 - Sonnenkontakt lädt die Banane einmalig auf: goldener Schein, Tonsignal und 20 % mehr Explosionsradius, ohne die Flugbahn zu verändern.
 - Dekorativer Luftverkehr mit Pausen: Zeppelin 32 %, Ballon 26 %, Flugzeug 34 %, UFO 6 %, Papierflieger 2 % je Passage. UFOs sind schneller; ein kleiner Vogelschwarm ergänzt den Himmel. Die Objekte sind nicht kollidierbar und halten bei reduzierter Bewegung still.
+- Die Zielhilfe beginnt im Körperzentrum, liegt hinter dem Gorilla und bleibt durch die reduzierte Transparenz unaufdringlich lesbar.
 
 ## Spielen
 

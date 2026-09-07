@@ -125,14 +125,15 @@
     if (!Number.isFinite(angle) || !Number.isFinite(power) || power <= 0 || power > 360 || angle < 0 || angle > 360) return;
     const { vx, vy } = launchVector(game.turn, angle, 1), g = game.gorillas[game.turn];
     const length = 14 + power * .23;
-    const x = g.x + (game.turn === 0 ? -18 : 18), y = g.y - 6;
+    // Start at the torso center and draw before the actor so the guide sits behind him.
+    const x = g.x, y = g.y + 16;
     const endX = x + vx * length, endY = y - vy * length;
     ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(endX, endY);
     ctx.moveTo(endX - vx * 6 - vy * 4, endY + vy * 6 - vx * 4); ctx.lineTo(endX, endY);
     ctx.lineTo(endX - vx * 6 + vy * 4, endY + vy * 6 + vx * 4);
-    ctx.strokeStyle = '#fff4d573'; ctx.lineWidth = 4; ctx.stroke();
-    ctx.strokeStyle = '#394d55b3'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
+    ctx.strokeStyle = '#fff4d525'; ctx.lineWidth = 6; ctx.stroke();
+    ctx.strokeStyle = '#394d554d'; ctx.lineWidth = 2.5; ctx.stroke(); ctx.restore();
   }
   function draw(time) {
     ctx.imageSmoothingEnabled = false;
@@ -158,8 +159,8 @@
     sun(); updateCity(); ctx.drawImage(city, 0, 0);
     ctx.fillStyle = '#293f47'; ctx.fillRect(0, FLOOR, WIDTH, HEIGHT - FLOOR);
     ctx.fillStyle = '#9ba99d'; ctx.fillRect(0, FLOOR + 1, WIDTH, 1);
-    game.gorillas.forEach((g, player) => gorilla(g, player, time));
     aimArrow();
+    game.gorillas.forEach((g, player) => gorilla(g, player, time));
     if (game.shot && game.phase === 'flying') banana(game.shot);
     if (game.impact) drawExplosion(ctx, game.impact, game.wind, reducedMotion);
     if (!$('result').hidden && game.winner !== null) {
