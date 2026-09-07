@@ -45,7 +45,7 @@
     }
   }
   function drawExplosion(ctx, hit, wind = 0, reducedMotion = false) {
-    const t = hit.age, big = hit.type === 'gorilla', size = big ? 1.5 : 1;
+    const t = hit.age, big = hit.type === 'gorilla', size = hit.radius ? hit.radius / 11 : big ? 1.5 : 1;
     if (t > 1.8) return;
     ctx.save();
     if (reducedMotion) {
@@ -66,7 +66,7 @@
       for (let i = 0; i < 6; i++) {
         const angle = i * 2.399;
         pixelDisc(ctx, hit.x + Math.cos(angle) * 9 * expansion * size, hit.y + Math.sin(angle) * 7 * expansion * size,
-          (4 + expansion * 10) * size, i % 2 ? '#ed672f' : '#f5a43d');
+          (4 + expansion * 10) * size, hit.charged ? (i % 2 ? '#f7b547' : '#ffe49a') : i % 2 ? '#ed672f' : '#f5a43d');
       }
       pixelDisc(ctx, hit.x, hit.y - t * 10, Math.max(1, 10 * (1 - t / .5)) * size, '#ffe5a0');
     }

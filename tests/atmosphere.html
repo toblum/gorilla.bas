@@ -1,0 +1,11 @@
+<!doctype html><html lang="de"><meta charset="utf-8"><title>Gorillas – Atmosphäre und Mobilansicht</title>
+<style>body{background:#f3eedf;color:#252d31;font:14px monospace;padding:20px}canvas{display:block;image-rendering:pixelated;max-width:100%;margin:15px 0}iframe{width:390px;height:800px;border:1px solid #252d31}</style>
+<h1>Luftverkehr und Einschlagsenergie</h1><canvas id="review" width="1000" height="300"></canvas>
+<h2>Startbildschirm · 390 Pixel</h2><iframe src="../index.html" title="Mobile Spielansicht"></iframe>
+<script src="../engine.js"></script><script src="../visuals.js"></script><script src="../scenery.js"></script>
+<script>
+const ctx=document.getElementById('review').getContext('2d');ctx.fillStyle='#eab69f';ctx.fillRect(0,0,1000,300);
+const scene=new GorillaScenery();
+['zeppelin','balloon','plane','ufo','paper'].forEach((kind,i)=>{ctx.save();ctx.translate(i*195+90,55);ctx.scale(2,2);scene.object={kind,x:0,y:0,direction:1};scene.draw(ctx);ctx.restore();ctx.fillStyle='#252d31';ctx.fillText(kind,i*195+60,110)});
+[20,65,160,160].forEach((power,i)=>{const radius=Gorillas.blastRadius({vx:power,vy:0,time:0,charged:i===3},0,9.8);GorillaVisuals.drawExplosion(ctx,{type:'building',x:110+i*240,y:210,age:.18,radius,charged:i===3});ctx.fillStyle='#252d31';ctx.fillText(i===3?'160 + Sonnenladung':`Stärke ${power}`,60+i*240,280)});
+</script></html>

@@ -17,7 +17,7 @@ Dann [http://127.0.0.1:8080](http://127.0.0.1:8080) öffnen. Der lokale Server e
 
 ## Selbst hosten
 
-Diese acht Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
+Diese neun Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
 
 ```text
 index.html
@@ -25,6 +25,7 @@ style.css
 engine.js
 sound.js
 visuals.js
+scenery.js
 finale.js
 game.js
 favicon.svg
@@ -38,7 +39,14 @@ Die öffentliche Adresse ist [gorillas.sparebytes.dev](https://gorillas.sparebyt
 
 Jeder Push auf `main` löst über die vorhandene GitHub-App einen Build in Coolify aus. Nixpacks führt `npm test && npm run build` aus; anschließend liefert Nginx ausschließlich das Verzeichnis `/dist` über HTTPS aus. Pull-Request-Deployments sind deaktiviert.
 
-Der Build benötigt Node.js 22 oder neuer und kopiert nur die acht Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
+Der Build benötigt Node.js 22 oder neuer und kopiert nur die neun Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
+
+## Neu in Version 1.1
+
+- Optionale Zielhilfe im Startbildschirm (standardmäßig aus): Der Pfeil am aktiven Gorilla zeigt den gewählten Winkel und die Wurfstärke, gespiegelt für Spieler 2. Die Einstellung bleibt beim Reload erhalten.
+- Die Einschlagsgeschwindigkeit bestimmt den Kraterradius: etwa 8 bis 15 Pixel statt eines festen Radius. Fallbewegung und Wind zählen mit; direkte Gorillatreffer bleiben tödlich.
+- Sonnenkontakt lädt die Banane einmalig auf: goldener Schein, Tonsignal und 20 % mehr Explosionsradius, ohne die Flugbahn zu verändern.
+- Dekorativer Luftverkehr mit Pausen: Zeppelin 32 %, Ballon 26 %, Flugzeug 34 %, UFO 6 %, Papierflieger 2 % je Passage. UFOs sind schneller; ein kleiner Vogelschwarm ergänzt den Himmel. Die Objekte sind nicht kollidierbar und halten bei reduzierter Bewegung still.
 
 ## Spielen
 
@@ -83,6 +91,6 @@ Die Tests prüfen Fluggleichungen, Wind und Gravitation, 100 erzeugte Skylines, 
 
 Zusätzlich im Browser geprüft: Namens- und Zieländerung, Eingabesperre während des Wurfs, Fehlwurf, Selbsttreffer per Enter, Siegdialog und Revanche. Die Layoutprüfung unter `tests/responsive.html` enthält 320 und 390 Pixel breite Mobilansichten sowie ein Desktopfenster mit 1000 × 720 Pixeln. Der Browserdurchlauf erfolgte über den lokalen HTTP-Server; der direkte Dateistart wurde nicht automatisiert geprüft.
 
-Die Erweiterung ist mit 21 automatischen Tests abgesichert, einschließlich der gesperrten Eingabe während der Jubelphase, der Länge der Siegesmelodien und der Session-Wiederherstellung bei Gebäudeschäden, während eines Flugs und während des Jubels. Frühere Browserprüfungen deckten Pfeiltasten, Shift-Schritte, Eingabegrenzen, Leertastenwurf, Texteingabe im Dialog sowie Ton an/aus ab. Die aktuelle Gestaltung des Startbildschirms und der Fokuswechsel per Mausrad sind noch nicht im Browser nachgeprüft. `tests/audio.html` rendert acht Effekte über Web Audio und prüft deren Signalpegel sowie die Stummschaltung. `tests/visuals.html` zeigt die Gorilla-Posen vergrößert und die Explosionen zu verschiedenen Zeitpunkten.
+Die Erweiterung ist mit 29 automatischen Tests abgesichert, einschließlich der gesperrten Eingabe während der Jubelphase, der Länge der Siegesmelodien und der Session-Wiederherstellung bei Gebäudeschäden, während eines Flugs und während des Jubels. Frühere Browserprüfungen deckten Pfeiltasten, Shift-Schritte, Eingabegrenzen, Leertastenwurf, Texteingabe im Dialog sowie Ton an/aus ab. Die aktuelle Gestaltung des Startbildschirms und der Fokuswechsel per Mausrad sind noch nicht im Browser nachgeprüft. `tests/audio.html` rendert acht Effekte über Web Audio und prüft deren Signalpegel sowie die Stummschaltung. `tests/visuals.html` zeigt die Gorilla-Posen vergrößert und die Explosionen zu verschiedenen Zeitpunkten.
 
 Aktuelle Desktop- und Mobilbrowser mit Canvas und HTML-Dialogen werden vorausgesetzt. Die Seite benötigt während des Spielens keine Netzwerkanfragen; lediglich der freiwillige Link zum Original öffnet GitHub.

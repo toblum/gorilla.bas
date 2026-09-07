@@ -46,6 +46,16 @@
     return pixels.map(row => row.join(''));
   })();
   const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+  function launchVector(player, angle, power) {
+    const radians = (player === 0 ? angle : 180 - angle) * Math.PI / 180;
+    return { vx: Math.cos(radians) * power, vy: Math.sin(radians) * power };
+  }
+  function blastRadius(shot, wind, gravity) {
+    if (!shot) return CRATER;
+    // Kinetic energy at impact, including falling speed and wind acceleration.
+    const energy = ((shot.vx + wind / 5 * shot.time) ** 2 + (gravity * shot.time - shot.vy) ** 2) / 2;
+    return (7.5 + 8 * energy / (energy + 3200)) * (shot.charged ? 1.2 : 1);
+  }
   function pointAt(shot, time, wind, gravity) {
     return { x: shot.startX + SCALE * (shot.vx * time + wind / 10 * time * time),
       y: shot.startY + SCALE * (-shot.vy * time + gravity / 2 * time * time) };
@@ -60,7 +70,8 @@
       this.options = {
         names: [0, 1].map(i => String(options.names?.[i] || `Spieler ${i + 1}`).trim().slice(0, 18) || `Spieler ${i + 1}`),
         target: clamp(Math.round(Number(options.target) || 3), 1, 99),
-        gravity: clamp(Number(options.gravity) || 9.8, .5, 30)
+        gravity: clamp(Number(options.gravity) || 9.8, .5, 30),
+        aimAssist: options.aimAssist === true
       };
       this.scores = [0, 0]; this.turn = 0; this.round = 0;
       this.lastShots = [null, null]; this.newRound();
@@ -84,6 +95,7 @@
       if (state.buildings.some(b => ![b.x, b.y, b.width, b.height, b.color].every(Number.isInteger) || b.x < 0 || b.y < 0 || b.x + b.width > WIDTH || b.y + b.height > HEIGHT || b.color < 0 || b.color > 3 || !Array.isArray(b.windows))) return false;
       const copy = JSON.parse(JSON.stringify(state));
       for (const key of ['options', 'scores', 'turn', 'round', 'lastShots', 'phase', 'shot', 'impact', 'winner', 'sunHit', 'lastEvent', 'celebrationAge', 'buildings', 'gorillas', 'wind']) this[key] = copy[key];
+      this.options.aimAssist = this.options.aimAssist === true;
       this.terrain = new Uint8Array(WIDTH * HEIGHT); this.craters = [];
       this.buildings.forEach((b, i) => { for (let y = b.y; y < b.y + b.height; y++) this.terrain.fill(i + 1, y * WIDTH + b.x, y * WIDTH + b.x + b.width); });
       for (const c of copy.craters) this.destroy(c.x, c.y, c.radius);
@@ -115,11 +127,11 @@
     }
     fire(angle, power) {
       if (this.phase !== 'aiming' || !Number.isFinite(angle) || !Number.isFinite(power) || angle < 0 || angle > 360 || power < 0 || power > 360) return false;
-      const radians = (this.turn === 0 ? angle : 180 - angle) * Math.PI / 180;
+      const velocity = launchVector(this.turn, angle, power);
       const gorilla = this.gorillas[this.turn];
       const startX = gorilla.x + (this.turn === 0 ? -18 : 18), startY = gorilla.y - 6;
       this.lastShots[this.turn] = { angle, power }; this.sunHit = false;
-      this.shot = { startX, startY, x: startX, y: startY, vx: Math.cos(radians) * power, vy: Math.sin(radians) * power, time: 0, trail: [] };
+      this.shot = { startX, startY, x: startX, y: startY, ...velocity, time: 0, trail: [], charged: false };
       this.phase = 'flying'; this.lastEvent = 'throw';
       if (power < 2) this.collide({ type: 'gorilla', player: this.turn, x: gorilla.x, y: gorilla.y + 16 });
       return true;
@@ -146,12 +158,13 @@
       }
     }
     collide(hit) {
-      this.impact = { ...hit, age: 0 }; this.phase = 'impact'; this.lastEvent = hit.type;
-      if (hit.type === 'building') this.destroy(hit.x, hit.y);
+      const radius = blastRadius(this.shot, this.wind, this.options.gravity) * (hit.type === 'gorilla' ? 1.5 : 1);
+      this.impact = { ...hit, age: 0, radius, charged: this.shot?.charged === true }; this.phase = 'impact'; this.lastEvent = hit.type;
+      if (hit.type === 'building') this.destroy(hit.x, hit.y, radius);
       if (hit.type === 'gorilla') {
         this.gorillas[hit.player].alive = false;
         this.winner = 1 - hit.player; this.scores[this.winner]++;
-        this.destroy(hit.x, hit.y, 22);
+        this.destroy(hit.x, hit.y, radius);
       }
     }
     finishShot() {
@@ -183,10 +196,13 @@
         for (let i = 1; i <= steps; i++) {
           const x = shot.x + (end.x - shot.x) * i / steps, y = shot.y + (end.y - shot.y) * i / steps;
           if (x < -6 || x > WIDTH + 6 || y > HEIGHT + 6) { this.lastEvent = 'miss'; this.finishShot(); return; }
-          if (Math.hypot(x - WIDTH / 2, y - 61) < 23) this.sunHit = true;
+          if (Math.hypot(x - WIDTH / 2, y - 61) < 23) {
+            this.sunHit = true;
+            if (!shot.charged) { shot.charged = true; this.lastEvent = 'sun'; }
+          }
           if (y >= -3) {
             const hit = this.collisionAt(x, y);
-            if (hit) { shot.x = x; shot.y = y; this.collide(hit); return; }
+            if (hit) { shot.x = x; shot.y = y; shot.time += dt * i / steps; this.collide(hit); return; }
           }
         }
         shot.x = end.x; shot.y = end.y; shot.time += dt;
@@ -202,7 +218,7 @@
       return false;
     }
   }
-  const api = { Game, WIDTH, HEIGHT, FLOOR, CRATER, SPRITE, GORILLA_WIDTH, GORILLA_HEIGHT, CELEBRATION_DURATION, pointAt, gorillaPixel };
+  const api = { Game, WIDTH, HEIGHT, FLOOR, CRATER, SPRITE, GORILLA_WIDTH, GORILLA_HEIGHT, CELEBRATION_DURATION, pointAt, gorillaPixel, launchVector, blastRadius };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Gorillas = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

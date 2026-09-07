@@ -1,10 +1,11 @@
 /* Canvas presentation and accessible HTML controls. No network dependencies. */
 (() => {
   'use strict';
-  const { Game, WIDTH, HEIGHT, FLOOR } = window.Gorillas;
+  const { Game, WIDTH, HEIGHT, FLOOR, launchVector } = window.Gorillas;
   const { drawGorilla, drawExplosion, drawBanana } = window.GorillaVisuals;
   const game = new Game();
   const sound = new window.GorillaSound();
+  const scenery = new window.GorillaScenery();
   const $ = id => document.getElementById(id);
   const canvas = $('game'), ctx = canvas.getContext('2d');
   const city = document.createElement('canvas'); city.width = WIDTH; city.height = HEIGHT;
@@ -28,6 +29,7 @@
   function populateSettings() {
     for (let i = 0; i < 2; i++) $(`setting-name-${i}`).value = game.options.names[i];
     $('setting-target').value = game.options.target; $('setting-gravity').value = game.options.gravity;
+    $('setting-aim-assist').checked = game.options.aimAssist;
   }
   function returnToWelcome() {
     sound.stop(); $('finale').close(); finale = null; savedFinaleAge = 0;
@@ -102,7 +104,11 @@
   function banana(shot) {
     if (shot.y < 0) {
       ctx.fillStyle = '#514e43'; ctx.font = '10px "Courier New"'; ctx.textAlign = 'center';
-      ctx.fillText('↑ BANANE', Math.max(40, Math.min(WIDTH - 40, shot.x)), 16); return;
+      ctx.fillText(shot.charged ? '↑ SONNENBANANE' : '↑ BANANE', Math.max(65, Math.min(WIDTH - 65, shot.x)), 16); return;
+    }
+    if (shot.charged) {
+      ctx.save(); ctx.globalAlpha = .32; ctx.fillStyle = '#fff0ac';
+      ctx.beginPath(); ctx.arc(shot.x, shot.y, 10, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
     for (let i = 0; i < shot.trail.length; i++) {
       ctx.fillStyle = `rgba(255,241,185,${i / shot.trail.length * .45})`;
@@ -112,6 +118,21 @@
     ctx.fillStyle = '#554b32'; ctx.fillRect(-5, -5, 3, 5);
     ctx.fillStyle = '#ffe181'; ctx.fillRect(-5, -2, 3, 5); ctx.fillRect(-3, 2, 6, 3); ctx.fillRect(3, -2, 3, 5); ctx.fillRect(4, -5, 2, 4);
     ctx.restore();
+  }
+  function aimArrow() {
+    if (!game.options.aimAssist || game.phase !== 'aiming') return;
+    const angle = $('angle').valueAsNumber, power = $('power').valueAsNumber;
+    if (!Number.isFinite(angle) || !Number.isFinite(power) || power <= 0 || power > 360 || angle < 0 || angle > 360) return;
+    const { vx, vy } = launchVector(game.turn, angle, 1), g = game.gorillas[game.turn];
+    const length = 14 + power * .23;
+    const x = g.x + (game.turn === 0 ? -18 : 18), y = g.y - 6;
+    const endX = x + vx * length, endY = y - vy * length;
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(endX, endY);
+    ctx.moveTo(endX - vx * 6 - vy * 4, endY + vy * 6 - vx * 4); ctx.lineTo(endX, endY);
+    ctx.lineTo(endX - vx * 6 + vy * 4, endY + vy * 6 + vx * 4);
+    ctx.strokeStyle = '#fff4d573'; ctx.lineWidth = 4; ctx.stroke();
+    ctx.strokeStyle = '#394d55b3'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
   }
   function draw(time) {
     ctx.imageSmoothingEnabled = false;
@@ -128,18 +149,7 @@
       ctx.fillRect(Math.round(x + 17), y - 5, 46 + i * 4, 5);
       ctx.fillStyle = '#fff1d52b'; ctx.fillRect(Math.round(x - 24), y + 5, 132, 3);
     }
-    // Distant scenery only: no collision, trail, marker or influence on a throw.
-    const passage = sceneryTime / 1000 % 145;
-    if (!reducedMotion && passage > 18 && passage < 98) {
-      const x = -75 + (passage - 18) / 80 * 950, y = 108 + Math.sin(passage / 19) * 2;
-      ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.globalAlpha = .22;
-      ctx.fillStyle = '#7b8589';
-      ctx.beginPath(); ctx.ellipse(0, 0, 29, 8, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(-20, 0); ctx.lineTo(-32, -12); ctx.lineTo(-29, 0); ctx.lineTo(-32, 10); ctx.closePath(); ctx.fill();
-      ctx.fillRect(-4, 8, 13, 4);
-      ctx.fillStyle = '#e0c5af'; ctx.fillRect(-19, -3, 36, 2);
-      ctx.restore();
-    }
+    scenery.draw(ctx);
     // Quiet, non-interactive skyline sits behind the playfield.
     ctx.fillStyle = '#b58e87';
     for (let i = 0; i < 23; i++) {
@@ -149,6 +159,7 @@
     ctx.fillStyle = '#293f47'; ctx.fillRect(0, FLOOR, WIDTH, HEIGHT - FLOOR);
     ctx.fillStyle = '#9ba99d'; ctx.fillRect(0, FLOOR + 1, WIDTH, 1);
     game.gorillas.forEach((g, player) => gorilla(g, player, time));
+    aimArrow();
     if (game.shot && game.phase === 'flying') banana(game.shot);
     if (game.impact) drawExplosion(ctx, game.impact, game.wind, reducedMotion);
     if (!$('result').hidden && game.winner !== null) {
@@ -216,7 +227,7 @@
       if (!celebrating && game.phase !== 'matchOver' && !$('settings').open) $('continue').focus({ preventScroll: true });
       if (game.phase === 'matchOver') startFinale();
     } else {
-      $('message').textContent = game.phase === 'impact' ? (game.winner !== null ? 'Treffer! Das gibt einen Punkt.' : 'Die Fassade hat jetzt ein Fenster mehr.') : 'Banane unterwegs …';
+      $('message').textContent = game.phase === 'impact' ? (game.winner !== null ? 'Treffer! Das gibt einen Punkt.' : 'Die Fassade hat jetzt ein Fenster mehr.') : game.shot?.charged ? 'Sonnenladung! Diese Banane hat jetzt mehr Wumms.' : 'Banane unterwegs …';
     }
     uiDirty = false;
   }
@@ -288,16 +299,23 @@
   $('settings-form').addEventListener('submit', event => {
     event.preventDefault();
     sound.stop();
-    game.reset({ names: [$('setting-name-0').value, $('setting-name-1').value], target: Number($('setting-target').value), gravity: Number($('setting-gravity').value) });
+    game.reset({ names: [$('setting-name-0').value, $('setting-name-1').value], target: Number($('setting-target').value), gravity: Number($('setting-gravity').value), aimAssist: $('setting-aim-assist').checked });
     started = true; $('settings-close').hidden = false;
     sound.play('round'); $('settings').close(); drawnTerrain = -1; syncUI(true); saveSession();
   });
   function frame(time) {
     const dt = previousTime ? Math.min((time - previousTime) / 1000, .05) : 0; previousTime = time;
-    if (!document.hidden) sceneryTime += dt * 1000;
+    if (!document.hidden) { sceneryTime += dt * 1000; if (!reducedMotion) scenery.update(dt); }
     if (!$('settings').open && !document.hidden) {
       if (finale) finale.update(dt);
-      else if (started) { game.update(dt); updateAmbientLights(dt); }
+      else if (started) {
+        const wasCharged = game.shot?.charged;
+        game.update(dt); updateAmbientLights(dt);
+        if (!wasCharged && game.shot?.charged && game.phase === 'flying') {
+          $('message').textContent = 'Sonnenladung! Diese Banane hat jetzt mehr Wumms.';
+          sound.play('round');
+        }
+      }
     }
     if (previousPhase !== game.phase || uiDirty) {
       if (previousPhase !== game.phase) {
