@@ -3,10 +3,13 @@
   'use strict';
   const { Game, WIDTH, HEIGHT, FLOOR, launchVector } = window.Gorillas;
   const { drawGorilla, drawExplosion, drawBanana } = window.GorillaVisuals;
-  const game = new Game();
+  let mode = '2d', game = new Game(), renderer3d = null, cityRound3d = -1, craterCount3d = -1;
   const sound = new window.GorillaSound();
   const scenery = new window.GorillaScenery();
   const $ = id => document.getElementById(id);
+  function createRenderer3d() {
+    try { return new window.Gorilla3DRenderer($('game3d')); } catch { return null; }
+  }
   const canvas = $('game'), ctx = canvas.getContext('2d');
   const city = document.createElement('canvas'); city.width = WIDTH; city.height = HEIGHT;
   const cityCtx = city.getContext('2d');
@@ -18,18 +21,26 @@
   let started = false, savedInputs = null, saveTimer = 0, finale = null, savedFinaleAge = 0, sceneryTime = 0;
   try {
     const saved = JSON.parse(sessionStorage.getItem(sessionKey));
+    if (saved && saved.mode === '3d') {
+      renderer3d = createRenderer3d();
+      if (renderer3d) {
+        const restored3d = new window.Gorillas3D.Game3D();
+        if (restored3d.restore(saved.game)) { game = restored3d; mode = '3d'; }
+      }
+    }
     if (saved && game.restore(saved.game)) {
       started = saved.screen !== 'welcome'; savedInputs = saved.inputs; savedFinaleAge = saved.finaleAge || 0;
       sound.enabled = saved.sound !== false;
     }
   } catch { /* Storage may be unavailable or an older save invalid. */ }
   function saveSession() {
-    try { sessionStorage.setItem(sessionKey, JSON.stringify({ game: game.snapshot(), inputs: [$('angle').value, $('power').value], sound: sound.enabled, screen: started ? 'game' : 'welcome', finaleAge: finale?.age || 0 })); } catch { /* Playing also works without storage. */ }
+    try { sessionStorage.setItem(sessionKey, JSON.stringify({ mode, game: game.snapshot(), inputs: [$('angle').value, $('power').value, $('direction').value], sound: sound.enabled, screen: started ? 'game' : 'welcome', finaleAge: finale?.age || 0 })); } catch { /* Playing also works without storage. */ }
   }
   function populateSettings() {
     for (let i = 0; i < 2; i++) $(`setting-name-${i}`).value = game.options.names[i];
     $('setting-target').value = game.options.target; $('setting-gravity').value = game.options.gravity;
     $('setting-aim-assist').checked = game.options.aimAssist;
+    document.querySelector(`input[name="mode"][value="${mode}"]`).checked = true;
   }
   function returnToWelcome() {
     sound.stop(); $('finale').close(); finale = null; savedFinaleAge = 0;
@@ -136,6 +147,12 @@
     ctx.strokeStyle = '#394d554d'; ctx.lineWidth = 2.5; ctx.stroke(); ctx.restore();
   }
   function draw(time) {
+    if (mode === '3d' && renderer3d) {
+      if (cityRound3d !== game.round) { renderer3d.setCity(game); cityRound3d = game.round; craterCount3d = -1; }
+      if (craterCount3d !== game.craters.length) { renderer3d.syncDestruction(game); craterCount3d = game.craters.length; }
+      renderer3d.draw(game, { angle: $('angle').valueAsNumber, power: $('power').valueAsNumber, direction: $('direction').valueAsNumber, aimAssist: game.options.aimAssist, reducedMotion }, time / 1000);
+    } else {
+    // 2D scene (kept flush-left to stay close to the original code).
     ctx.imageSmoothingEnabled = false;
     const sky = ctx.createLinearGradient(0, 0, 0, HEIGHT);
     sky.addColorStop(0, '#a6b4bc'); sky.addColorStop(.28, '#eab69f'); sky.addColorStop(.66, '#efa58b'); sky.addColorStop(1, '#c98482');
@@ -163,6 +180,7 @@
     game.gorillas.forEach((g, player) => gorilla(g, player, time));
     if (game.shot && game.phase === 'flying') banana(game.shot);
     if (game.impact) drawExplosion(ctx, game.impact, game.wind, reducedMotion);
+    }
     if (!$('result').hidden && game.winner !== null) {
       const portrait = $('winner-portrait').getContext('2d');
       portrait.clearRect(0, 0, 144, 144); portrait.save(); portrait.scale(3, 3);
@@ -194,6 +212,8 @@
   }
   function syncUI(focus = false) {
     const aiming = game.phase === 'aiming', celebrating = game.phase === 'celebrating';
+    document.body.classList.toggle('mode-3d', mode === '3d');
+    $('game').hidden = mode === '3d'; $('game3d').hidden = mode !== '3d';
     const ended = celebrating || ['roundOver', 'matchOver'].includes(game.phase);
     for (let p = 0; p < 2; p++) {
       $(`name-${p}`).textContent = game.options.names[p]; $(`score-${p}`).textContent = game.scores[p];
@@ -207,14 +227,15 @@
     const tip = 70 + game.wind * 4, head = tip - Math.sign(game.wind) * 3;
     $('wind-arrow').setAttribute('d', game.wind === 0 ? '' : `M70 8H${tip}M${head} 5L${tip} 8L${head} 11`);
     $('gravity-label').textContent = `g ${game.options.gravity.toLocaleString('de-DE')} m/s²`;
-    for (const id of ['angle', 'power', 'throw']) $(id).disabled = !aiming;
+    for (const id of ['angle', 'power', 'direction', 'throw']) $(id).disabled = !aiming;
     $('result').hidden = !ended || celebrating || game.phase === 'matchOver';
     $('turn-label').textContent = ended ? (game.phase === 'matchOver' ? 'MATCH ENTSCHIEDEN' : 'RUNDE ENTSCHIEDEN') : `${game.options.names[game.turn].toLocaleUpperCase('de-DE')} ${aiming ? 'IST DRAN' : 'WIRFT'}`;
     if (aiming) {
       const last = game.lastShots[game.turn];
-      $('angle').value = last?.angle ?? 45; $('power').value = last?.power ?? 65;
-      $('last-shot').textContent = last ? `Dein letzter Wurf: ${last.angle}° / Stärke ${last.power}` : 'Dein erster Wurf wartet.';
-      $('message').textContent = game.lastEvent === 'building' ? 'Nur Beton erwischt. Der nächste Versuch zählt.' : game.lastEvent === 'miss' ? 'Vorbei! Jetzt bist du am Zug.' : 'Die Stadt gehört euch. Legt los!';
+      $('angle').value = last?.angle ?? 45; $('power').value = last?.power ?? 65; $('direction').value = last?.direction ?? 0;
+      const lateral = mode === '3d' && last ? ` / Richtung ${(last.direction ?? 0) > 0 ? '+' : ''}${last.direction ?? 0}°` : '';
+      $('last-shot').textContent = last ? `Dein letzter Wurf: ${last.angle}° / Stärke ${last.power}${lateral}` : 'Dein erster Wurf wartet.';
+      $('message').textContent = ['building', 'ground'].includes(game.lastEvent) ? 'Nur Beton erwischt. Der nächste Versuch zählt.' : game.lastEvent === 'miss' ? 'Vorbei! Jetzt bist du am Zug.' : 'Die Stadt gehört euch. Legt los!';
       if (focus && !$('settings').open) { $('angle').focus({ preventScroll: true }); $('angle').select(); }
     } else if (ended) {
       const name = game.options.names[game.winner], matchOver = game.phase === 'matchOver';
@@ -235,27 +256,29 @@
   $('shot-form').addEventListener('submit', event => {
     event.preventDefault();
     if ($('settings').open || !$('shot-form').checkValidity()) return;
-    if (game.fire(Number($('angle').value), Number($('power').value))) { sound.play('throw'); uiDirty = true; syncUI(); }
+    const lateral = mode === '3d' ? Number($('direction').value) : 0;
+    if (game.fire(Number($('angle').value), Number($('power').value), lateral)) { sound.play('throw'); uiDirty = true; syncUI(); }
   });
   document.addEventListener('keydown', event => {
     if (event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || $('settings').open) return;
     const target = event.target;
     if (target instanceof Element && target.closest('button, a, select, textarea, [contenteditable="true"]')) return;
-    if (target instanceof HTMLInputElement && !['angle', 'power'].includes(target.id)) return;
+    if (target instanceof HTMLInputElement && !['angle', 'power', 'direction'].includes(target.id)) return;
     const arrows = { ArrowUp: ['angle', 1], ArrowDown: ['angle', -1], ArrowRight: ['power', 1], ArrowLeft: ['power', -1] };
-    if (!arrows[event.key] && event.code !== 'Space') return;
+    const lateral = mode === '3d' ? { KeyA: ['direction', -1], KeyD: ['direction', 1] }[event.code] : undefined;
+    if (!arrows[event.key] && !lateral && event.code !== 'Space') return;
     event.preventDefault();
     if (game.phase !== 'aiming') return;
     if (event.code === 'Space') {
       if (!event.repeat) $('shot-form').requestSubmit();
     } else {
-      const [id, direction] = arrows[event.key], input = $(id);
+      const [id, step] = arrows[event.key] || lateral, input = $(id);
       const value = Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : 0;
-      input.value = Math.max(0, Math.min(360, value + direction * (event.shiftKey ? 5 : 1)));
+      input.value = Math.max(Number(input.min), Math.min(Number(input.max), value + step * (event.shiftKey ? 5 : 1)));
       input.focus({ preventScroll: true }); input.select();
     }
   });
-  for (const id of ['angle', 'power']) {
+  for (const id of ['angle', 'power', 'direction']) {
     const input = $(id), wrapper = input.closest('.number-wrap');
     wrapper.addEventListener('wheel', event => {
       if (game.phase !== 'aiming' || $('settings').open || event.ctrlKey || event.metaKey || !event.deltaY) return;
@@ -263,7 +286,7 @@
       const step = event.shiftKey ? 5 : 1;
       const direction = event.deltaY < 0 ? 1 : -1;
       const value = Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : 0;
-      input.value = Math.max(0, Math.min(360, value + direction * step));
+      input.value = Math.max(Number(input.min), Math.min(Number(input.max), value + direction * step));
       input.focus({ preventScroll: true }); input.select(); saveSession();
     }, { passive: false });
   }
@@ -300,7 +323,13 @@
   $('settings-form').addEventListener('submit', event => {
     event.preventDefault();
     sound.stop();
-    game.reset({ names: [$('setting-name-0').value, $('setting-name-1').value], target: Number($('setting-target').value), gravity: Number($('setting-gravity').value), aimAssist: $('setting-aim-assist').checked });
+    const wants3d = document.querySelector('input[name="mode"]:checked')?.value === '3d';
+    if (wants3d && !renderer3d) renderer3d = createRenderer3d();
+    $('mode-note').hidden = !wants3d || !!renderer3d;
+    mode = wants3d && renderer3d ? '3d' : '2d';
+    const options = { names: [$('setting-name-0').value, $('setting-name-1').value], target: Number($('setting-target').value), gravity: Number($('setting-gravity').value), aimAssist: $('setting-aim-assist').checked };
+    game = mode === '3d' ? new window.Gorillas3D.Game3D(options) : new Game(options);
+    cityRound3d = -1; craterCount3d = -1;
     started = true; $('settings-close').hidden = false;
     sound.play('round'); $('settings').close(); drawnTerrain = -1; syncUI(true); saveSession();
   });
@@ -311,7 +340,8 @@
       if (finale) finale.update(dt);
       else if (started) {
         const wasCharged = game.shot?.charged;
-        game.update(dt); updateAmbientLights(dt);
+        game.update(dt);
+        if (mode === '2d') updateAmbientLights(dt);
         if (!wasCharged && game.shot?.charged && game.phase === 'flying') {
           $('message').textContent = 'Sonnenladung! Diese Banane hat jetzt mehr Wumms.';
           sound.play('round');
@@ -320,7 +350,7 @@
     }
     if (previousPhase !== game.phase || uiDirty) {
       if (previousPhase !== game.phase) {
-        if (game.phase === 'impact') sound.play(game.impact.type);
+        if (game.phase === 'impact') sound.play(game.impact.type === 'ground' ? 'building' : game.impact.type);
         else if (game.phase === 'celebrating') sound.play(game.scores[game.winner] >= game.options.target ? 'champion' : 'cheer');
         else if (game.phase === 'aiming' && previousPhase === 'flying' && game.lastEvent === 'miss') sound.play('miss');
       }
@@ -343,7 +373,10 @@
   document.addEventListener('visibilitychange', () => { if (document.hidden) saveSession(); });
   for (const id of ['angle', 'power']) $(id).addEventListener('input', saveSession);
   syncUI();
-  if (savedInputs && game.phase === 'aiming') { $('angle').value = savedInputs[0]; $('power').value = savedInputs[1]; }
+  if (savedInputs && game.phase === 'aiming') {
+    $('angle').value = savedInputs[0]; $('power').value = savedInputs[1];
+    if (savedInputs.length > 2) $('direction').value = savedInputs[2];
+  }
   previousPhase = game.phase;
   $('sound-toggle').setAttribute('aria-pressed', String(sound.enabled)); $('sound-label').textContent = sound.enabled ? 'Ton an' : 'Ton aus';
   if (!started) { populateSettings(); $('settings-close').hidden = true; $('settings').showModal(); }

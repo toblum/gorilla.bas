@@ -149,3 +149,16 @@ footer{font-size:13px;letter-spacing:0;color:#2f3532}
 .instructions span{color:#3a423d}
 .instructions b{color:var(--ink);letter-spacing:1px;margin-right:10px;font-weight:bold}
 @media(max-width:640px){.instructions{flex-direction:column;gap:8px}}
+
+/* 3D mode: second canvas, direction field and mode picker */
+#game3d{image-rendering:auto;cursor:grab;touch-action:none}
+#game3d:active{cursor:grabbing}
+canvas[hidden]{display:none}
+.direction-field{display:none}
+body.mode-3d .direction-field{display:block}
+.keys-3d{display:none}
+body.mode-3d .keys-3d{display:inline}
+.mode-select{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:2px 0 16px}
+.mode-option{margin:0}
+@media(max-width:640px){.mode-select{grid-template-columns:1fr}}
+@media(max-width:850px){body.mode-3d .shot-form{grid-template-columns:1fr 1fr 1fr 1.5fr}}

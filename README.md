@@ -27,6 +27,8 @@ sound.js
 visuals.js
 scenery.js
 finale.js
+engine3d.js
+render3d.js
 game.js
 favicon.svg
 ```
@@ -39,7 +41,15 @@ Die öffentliche Adresse ist [gorillas.sparebytes.dev](https://gorillas.sparebyt
 
 Jeder Push auf `main` löst über die vorhandene GitHub-App einen Build in Coolify aus. Nixpacks führt `npm test && npm run build` aus; anschließend liefert Nginx ausschließlich das Verzeichnis `/dist` über HTTPS aus. Pull-Request-Deployments sind deaktiviert.
 
-Der Build benötigt Node.js 22 oder neuer und kopiert nur die neun Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
+Der Build benötigt Node.js 22 oder neuer und kopiert nur die elf Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
+
+## Neu in Version 1.2
+
+- Wählbarer **3D-Modus** im Startbildschirm: Das gleiche Duellprinzip, aber die Stadt hat Tiefe. Zusätzlich zu Winkel und Stärke bestimmt die **Richtung** (−60° bis +60°) den seitlichen Wurf – positiv zeigt aus Sicht des Werfers nach rechts.
+- Die 3D-Stadt besteht aus einem Blockraster mit unterschiedlich hohen Hochhäusern, unterbrochen von **Straßen mit Fahrbahnmarkierungen, Parks mit Bäumen und Plätzen**. Explosionen reißen bleibende Löcher in die Fassaden; Straßentreffer hinterlassen Brandflecken.
+- Steuerung im 3D-Modus: zusätzlich **A / D** für die Richtung (Shift = 5er-Schritte), Mausrad über dem Richtungsfeld, **Ziehen** auf dem Spielfeld dreht die Kamera, **Scrollen** zoomt. Die Kamera schwingt beim Wurf hinter der Banane her.
+- Die optionale Zielhilfe zeichnet im 3D-Modus die komplette vorhergesagte Flugbahn als Punktspur samt Einschlagsmarkierung – unter Berücksichtigung von Wind und Richtung.
+- Die 3D-Darstellung läuft lokal per WebGL2, ohne Bibliothek oder Download: instanzierte Stadtgeometrie, prozedural erzeugte Texturen und die vertrauten Pixel-Gorillas als Sprites. Ohne WebGL2 bleibt der 2D-Modus verfügbar. Sonnenladung, Wind, Gravitation, Siegbedingungen, Sounds, Finale und Sitzungsspeicherung gelten in beiden Modi gleichermaßen.
 
 ## Neu in Version 1.1
 
@@ -51,10 +61,10 @@ Der Build benötigt Node.js 22 oder neuer und kopiert nur die neun Spieldateien.
 
 ## Spielen
 
-- Der animierte Willkommensbildschirm fragt Namen, gewonnene Runden zum Sieg und Gravitation ab. **Auf die Dächer!** startet das Match. Ihr spielt abwechselnd am selben Gerät: Orange ist Spieler 1, Mint ist Spieler 2. **Neues Match** öffnet die Einstellungen erneut.
+- Der animierte Willkommensbildschirm fragt Namen, gewonnene Runden zum Sieg und Gravitation ab und bietet die Wahl zwischen **2D · Klassisch** und **3D · Die Stadt in der Tiefe**. **Auf die Dächer!** startet das Match. Ihr spielt abwechselnd am selben Gerät: Orange ist Spieler 1, Mint ist Spieler 2. **Neues Match** öffnet die Einstellungen erneut und erlaubt jederzeit den Moduswechsel.
 - Das Mausrad über Winkel oder Stärke verändert den Wert und fokussiert das entsprechende Feld. **Shift** verändert den Wert in Fünferschritten.
 - **Winkel** und **Stärke** eingeben, dann **Banane werfen** oder in einem Eingabefeld `Enter` drücken. `Tab` wechselt zwischen den Feldern.
-- Alternativ: **↑ / ↓** erhöhen/verringern den Winkel, **→ / ←** erhöhen/verringern die Stärke. Mit **Shift** geht es in Fünferschritten. **Leertaste** wirft; Gedrückthalten löst keinen weiteren Wurf aus. Die Kürzel funktionieren im Spielfeld und in den Wurffeldern; im Einstellungsdialog bleibt die normale Tastatureingabe erhalten.
+- Alternativ: **↑ / ↓** erhöhen/verringern den Winkel, **→ / ←** erhöhen/verringern die Stärke. Mit **Shift** geht es in Fünferschritten. **Leertaste** wirft; Gedrückthalten löst keinen weiteren Wurf aus. Die Kürzel funktionieren im Spielfeld und in den Wurffeldern; im Einstellungsdialog bleibt die normale Tastatureingabe erhalten. Im 3D-Modus steuern **A / D** zusätzlich die Richtung.
 - Für beide Spieler zeigt **0° zum Gegner**, **90° senkrecht nach oben**. Winkel und Stärke erlauben jeweils ganze Zahlen von 0 bis 360. Zum Einstieg eignen sich etwa 45–65° und Stärke 60–85; Skyline und Wind entscheiden über den Treffer.
 - Der Windpfeil wächst vom Mittelstrich nach links oder rechts. Seine Länge ist proportional zur Windstärke; die Zahl zeigt den genauen Wert. Bei Windstille verschwindet der Pfeil. Wind bleibt innerhalb einer Runde gleich. Die Gravitation zieht die Banane nach unten.
 - Retro-Soundeffekte begleiten Würfe, Gebäudetreffer, Gorillatreffer, Fehlwürfe und Siege. **Ton an / Ton aus** schaltet sie um. Der Browser gibt Audio erst nach einer Spielaktion frei; die Töne entstehen lokal per Web Audio, ohne Audiodateien oder Downloads.
