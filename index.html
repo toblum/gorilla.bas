@@ -25,9 +25,9 @@
     </header>
     <section class="console" aria-label="Gorillas Spiel">
       <div class="scoreboard">
-        <div class="player player-one active" id="player-0"><span class="player-marker">01</span><div><span class="player-name" id="name-0">Spieler 1</span><span class="player-state" id="state-0">AM WURF</span></div><strong class="score" id="score-0">0</strong></div>
+        <div class="player player-one active" id="player-0"><div><span class="player-name" id="name-0">Spieler 1</span><span class="player-state" id="state-0">AM WURF</span></div><strong class="score" id="score-0">0</strong></div>
         <div class="round-info"><span id="round">RUNDE 01</span><span class="match-target" id="target-label">ZUERST 3 PUNKTE</span></div>
-        <div class="player player-two" id="player-1"><strong class="score" id="score-1">0</strong><div><span class="player-name" id="name-1">Spieler 2</span><span class="player-state" id="state-1">WARTET</span></div><span class="player-marker">02</span></div>
+        <div class="player player-two" id="player-1"><strong class="score" id="score-1">0</strong><div><span class="player-name" id="name-1">Spieler 2</span><span class="player-state" id="state-1">WARTET</span></div></div>
       </div>
       <div class="arena">
         <canvas id="game" width="800" height="420" role="img" aria-label="Zwei Gorillas stehen auf gegenüberliegenden Hochhäusern. Winkel und Stärke werden unter dem Spielfeld eingegeben.">Zum Spielen benötigst du einen Browser mit Canvas-Unterstützung.</canvas>
@@ -41,15 +41,15 @@
         <form id="shot-form" class="shot-form">
           <label class="shot-field" for="angle"><span>WINKEL</span><div class="number-wrap"><input id="angle" name="angle" type="number" min="0" max="360" step="1" value="45" required inputmode="numeric"><span>°</span></div></label>
           <label class="shot-field" for="power"><span>STÄRKE</span><div class="number-wrap"><input id="power" name="power" type="number" min="0" max="360" step="1" value="65" required inputmode="numeric"><span>↗</span></div></label>
-          <button class="primary-button throw-button" id="throw" type="submit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h4v6l3 4h5l4-4v5l-4 5H9l-5-5Z" fill="currentColor"/><path d="M4 2h4v3H4z" fill="currentColor"/></svg><span>Banane werfen<small>LEERTASTE / ENTER ↵</small></span></button>
+          <button class="primary-button throw-button" id="throw" type="submit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 2h4v4h-4z" fill="currentColor"/><path d="M7 6c-1 9 5 15 14 15l-1-5c-6 0-10-4-9-10H7z" fill="currentColor"/></svg><span>Banane werfen<small>LEERTASTE / ENTER ↵</small></span></button>
         </form>
       </div>
       <div class="console-bottom"><span class="key-legend"><kbd class="key" title="Winkel hoch">▲</kbd><kbd class="key" title="Winkel runter">▼</kbd> Winkel <kbd class="key" title="Stärke weniger">◀</kbd><kbd class="key" title="Stärke mehr">▶</kbd> Stärke <kbd class="key key-wide">Shift</kbd> 5er-Schritte</span><span>0° = Geradeaus · 90° = Senkrecht</span></div>
     </section>
     <section class="instructions" aria-label="So wird gespielt">
-      <div><span class="step">01 / ZIELEN</span><p>Winkel wählen. Stärke schätzen.<br>Der Wind hat ein Wörtchen mitzureden.</p></div>
-      <div><span class="step">02 / WERFEN</span><p>Trefft den anderen Gorilla.<br>Gebäude nehmen Bananen persönlich.</p></div>
-      <div><span class="step">03 / ABWECHSELN</span><p>Nach jedem Wurf ist der andere dran.<br>Wer das Punkteziel erreicht, gewinnt.</p></div>
+      <span><b>01 Zielen</b>Winkel und Stärke – der Wind redet mit.</span>
+      <span><b>02 Werfen</b>Gebäude nehmen Bananen persönlich.</span>
+      <span><b>03 Punkte</b>Wer zuerst das Ziel erreicht, fliegt zum Mond.</span>
     </section>
     <footer><span>EINE HOMMAGE AN QBASIC GORILLAS · 1990</span><a href="https://github.com/pmachapman/basic-samples/blob/master/QBASIC/GORILLA.BAS" target="_blank" rel="noopener noreferrer">Das Original <span aria-hidden="true">↗</span></a><span id="build-version">VERSION 1.1.1 · lokal</span></footer>
   </main>

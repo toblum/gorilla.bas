@@ -43,8 +43,9 @@ dialog#settings[open]{display:grid;grid-template-columns:.9fr 1.1fr}
 .edition{font-size:12px;letter-spacing:.4px;color:var(--ink)}
 .edition-sub{font-size:11px;color:var(--muted)}
 .text-button{font-size:14px;font-weight:bold}
-.player-marker{font-size:12px}
 .player-name{font-size:16px}
+.player-one .player-name{color:#ff9c72}
+.player-two .player-name{color:var(--mint)}
 .player-state{font-size:11px;letter-spacing:.6px;color:var(--score-muted)}
 .round-info{font-size:14px;letter-spacing:.4px}
 .match-target{font-size:12px;color:var(--score-muted)}
@@ -139,3 +140,12 @@ footer{font-size:13px;letter-spacing:0;color:#2f3532}
   .key{min-width:24px;height:24px}
   .console-bottom .key-legend{display:flex}
 }
+
+.arena::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(24,18,12,.07) 0 1px,transparent 1px 3px),radial-gradient(120% 90% at 50% 40%,transparent 58%,rgba(24,18,12,.22))}
+.player.active .player-name::before{content:"▶ "}
+.player-one.active .score{color:#ff9c72}
+.player-two.active .score{color:var(--mint)}
+.instructions{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px 26px;padding:18px 4px;margin-top:26px;border-top:1px solid var(--line);font-size:13px;line-height:1.5}
+.instructions span{color:#3a423d}
+.instructions b{color:var(--ink);letter-spacing:1px;margin-right:10px;font-weight:bold}
+@media(max-width:640px){.instructions{flex-direction:column;gap:8px}}
