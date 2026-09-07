@@ -103,7 +103,7 @@
   }
   function banana(shot) {
     if (shot.y < 0) {
-      ctx.fillStyle = '#514e43'; ctx.font = '10px "Courier New"'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#2f2a27'; ctx.font = '13px "Courier New"'; ctx.textAlign = 'center';
       ctx.fillText(shot.charged ? '↑ SONNENBANANE' : '↑ BANANE', Math.max(65, Math.min(WIDTH - 65, shot.x)), 16); return;
     }
     if (shot.charged) {
