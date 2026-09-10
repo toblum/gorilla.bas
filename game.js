@@ -3,7 +3,7 @@
   'use strict';
   const { Game, WIDTH, HEIGHT, FLOOR, launchVector } = window.Gorillas;
   const { drawGorilla, drawExplosion, drawBanana } = window.GorillaVisuals;
-  const game = new Game();
+  let game = new Game(), mode = '2d', renderer3d = null, rendererError = '', renderBlocked = false;
   const sound = new window.GorillaSound();
   const scenery = new window.GorillaScenery();
   const $ = id => document.getElementById(id);
@@ -18,26 +18,52 @@
   let started = false, savedInputs = null, saveTimer = 0, finale = null, savedFinaleAge = 0, sceneryTime = 0;
   try {
     const saved = JSON.parse(sessionStorage.getItem(sessionKey));
-    if (saved && game.restore(saved.game)) {
+    const candidate = saved?.mode === '3d' ? new window.Gorillas3D.Game3D() : new Game();
+    if (saved && candidate.restore(saved.game)) {
+      game = candidate; mode = saved.mode === '3d' ? '3d' : '2d';
       started = saved.screen !== 'welcome'; savedInputs = saved.inputs; savedFinaleAge = saved.finaleAge || 0;
       sound.enabled = saved.sound !== false;
     }
   } catch { /* Storage may be unavailable or an older save invalid. */ }
   function saveSession() {
-    try { sessionStorage.setItem(sessionKey, JSON.stringify({ game: game.snapshot(), inputs: [$('angle').value, $('power').value], sound: sound.enabled, screen: started ? 'game' : 'welcome', finaleAge: finale?.age || 0 })); } catch { /* Playing also works without storage. */ }
+    try { sessionStorage.setItem(sessionKey, JSON.stringify({ mode, game: game.snapshot(), inputs: [$('angle').value, $('power').value, $('direction').value], sound: sound.enabled, screen: started ? 'game' : 'welcome', finaleAge: finale?.age || 0 })); } catch { /* Playing also works without storage. */ }
   }
   function populateSettings() {
     for (let i = 0; i < 2; i++) $(`setting-name-${i}`).value = game.options.names[i];
     $('setting-target').value = game.options.target; $('setting-gravity').value = game.options.gravity;
     $('setting-aim-assist').checked = game.options.aimAssist;
+    $(`mode-${mode}`).checked = true; updateModeDescription();
   }
+  function updateModeDescription() {
+    $('mode-description').textContent = $('mode-3d').checked ? rendererError || 'Winkel, Richtung, Stärke: Werft durch eine räumliche Stadt. Kamera drehen, Straßen erkunden, Dächer treffen.' : 'Das Originalgefühl: Winkel und Stärke bestimmen euren Wurf.';
+  }
+  function ensure3D() {
+    try {
+      if (renderer3d?.lost) throw new Error('Die 3D-Grafik wurde unterbrochen. Bitte lade die Seite neu oder wähle 2D.');
+      if (!renderer3d) renderer3d = new window.GorillaCity3D($('game3d'), $('hud3d'));
+      rendererError = ''; return true;
+    }
+    catch (error) { rendererError = error.message; $('mode-description').textContent = rendererError; return false; }
+  }
+  function applyMode() {
+    const spatial = mode === '3d';
+    document.body.classList.toggle('mode-3d', spatial);
+    for (const id of ['game3d', 'hud3d', 'view-tools', 'direction-field', 'direction-help']) $(id).hidden = !spatial;
+    $('game').hidden = spatial; $('direction').disabled = !spatial;
+    $('game').setAttribute('aria-label', 'Zwei Gorillas auf Hochhäusern. Winkel und Stärke bestimmen den Wurf.');
+  }
+  for (const id of ['mode-2d', 'mode-3d']) $(id).addEventListener('change', updateModeDescription);
+  $('camera-overview').addEventListener('click', () => renderer3d?.resetCamera());
+  $('camera-player').addEventListener('click', () => renderer3d?.playerCamera(game));
+  $('camera-in').addEventListener('click', () => renderer3d?.zoom(.85));
+  $('camera-out').addEventListener('click', () => renderer3d?.zoom(1.15));
   function returnToWelcome() {
     sound.stop(); $('finale').close(); finale = null; savedFinaleAge = 0;
     started = false; game.reset(); drawnTerrain = -1; previousPhase = game.phase;
     populateSettings(); $('settings-close').hidden = true; $('settings').showModal(); syncUI(); saveSession();
   }
   function startFinale() {
-    if (finale || !started) return;
+    if (finale || !started || renderBlocked) return;
     $('finale-title').textContent = `${game.options.names[game.winner]} hebt ab!`;
     $('finale-score').textContent = `MATCH GEWONNEN · ${game.scores[0]} : ${game.scores[1]}`;
     finale = new window.GorillaFinale(returnToWelcome, savedFinaleAge);
@@ -68,7 +94,7 @@
     }
   }
   function updateAmbientLights(dt) {
-    if (reducedMotion || dt <= 0) return;
+    if (mode === '3d' || reducedMotion || dt <= 0) return;
     ambientTimer -= dt;
     if (ambientTimer > 0) return;
     ambientTimer = 3.5 + Math.random() * 3.5;
@@ -136,6 +162,9 @@
     ctx.strokeStyle = '#394d554d'; ctx.lineWidth = 2.5; ctx.stroke(); ctx.restore();
   }
   function draw(time) {
+    if (mode === '3d') {
+      renderer3d?.draw(game, time, { angle: $('angle').valueAsNumber, power: $('power').valueAsNumber, direction: $('direction').valueAsNumber }, reducedMotion);
+    } else {
     ctx.imageSmoothingEnabled = false;
     const sky = ctx.createLinearGradient(0, 0, 0, HEIGHT);
     sky.addColorStop(0, '#a6b4bc'); sky.addColorStop(.28, '#eab69f'); sky.addColorStop(.66, '#efa58b'); sky.addColorStop(1, '#c98482');
@@ -163,6 +192,7 @@
     game.gorillas.forEach((g, player) => gorilla(g, player, time));
     if (game.shot && game.phase === 'flying') banana(game.shot);
     if (game.impact) drawExplosion(ctx, game.impact, game.wind, reducedMotion);
+    }
     if (!$('result').hidden && game.winner !== null) {
       const portrait = $('winner-portrait').getContext('2d');
       portrait.clearRect(0, 0, 144, 144); portrait.save(); portrait.scale(3, 3);
@@ -202,18 +232,20 @@
     }
     $('round').textContent = `RUNDE ${String(game.round).padStart(2, '0')}`;
     $('target-label').textContent = `ZUERST ${game.options.target} ${game.options.target === 1 ? 'PUNKT' : 'PUNKTE'}`;
-    $('wind-label').textContent = game.wind === 0 ? 'WINDSTILLE' : `WIND ${Math.abs(game.wind)}`;
+    $('wind-label').textContent = mode === '3d' ? `WIND O ${game.wind > 0 ? '+' : ''}${game.wind} · S ${game.windZ > 0 ? '+' : ''}${game.windZ}` : game.wind === 0 ? 'WINDSTILLE' : `WIND ${Math.abs(game.wind)}`;
     $('wind').setAttribute('aria-label', `Wind: ${Math.abs(game.wind)}, ${game.wind < 0 ? 'nach links' : game.wind > 0 ? 'nach rechts' : 'windstill'}`);
+    if (mode === '3d') $('wind').setAttribute('aria-label', `Wind: ${game.wind} Richtung Osten, ${game.windZ} Richtung Süden; negative Werte zeigen in die Gegenrichtung.`);
     const tip = 70 + game.wind * 4, head = tip - Math.sign(game.wind) * 3;
     $('wind-arrow').setAttribute('d', game.wind === 0 ? '' : `M70 8H${tip}M${head} 5L${tip} 8L${head} 11`);
     $('gravity-label').textContent = `g ${game.options.gravity.toLocaleString('de-DE')} m/s²`;
     for (const id of ['angle', 'power', 'throw']) $(id).disabled = !aiming;
+    $('direction').disabled = !aiming || mode !== '3d';
     $('result').hidden = !ended || celebrating || game.phase === 'matchOver';
     $('turn-label').textContent = ended ? (game.phase === 'matchOver' ? 'MATCH ENTSCHIEDEN' : 'RUNDE ENTSCHIEDEN') : `${game.options.names[game.turn].toLocaleUpperCase('de-DE')} ${aiming ? 'IST DRAN' : 'WIRFT'}`;
     if (aiming) {
       const last = game.lastShots[game.turn];
-      $('angle').value = last?.angle ?? 45; $('power').value = last?.power ?? 65;
-      $('last-shot').textContent = last ? `Dein letzter Wurf: ${last.angle}° / Stärke ${last.power}` : 'Dein erster Wurf wartet.';
+      $('angle').value = last?.angle ?? 45; $('power').value = last?.power ?? 65; $('direction').value = last?.direction ?? (mode === '3d' ? game.defaultDirection() : 0);
+      $('last-shot').textContent = last ? `Dein letzter Wurf: ${last.angle}° / ${mode === '3d' ? `Richtung ${last.direction}° / ` : ''}Stärke ${last.power}` : 'Dein erster Wurf wartet.';
       $('message').textContent = game.lastEvent === 'building' ? 'Nur Beton erwischt. Der nächste Versuch zählt.' : game.lastEvent === 'miss' ? 'Vorbei! Jetzt bist du am Zug.' : 'Die Stadt gehört euch. Legt los!';
       if (focus && !$('settings').open) { $('angle').focus({ preventScroll: true }); $('angle').select(); }
     } else if (ended) {
@@ -235,14 +267,15 @@
   $('shot-form').addEventListener('submit', event => {
     event.preventDefault();
     if ($('settings').open || !$('shot-form').checkValidity()) return;
-    if (game.fire(Number($('angle').value), Number($('power').value))) { sound.play('throw'); uiDirty = true; syncUI(); }
+    if (game.fire(Number($('angle').value), Number($('power').value), Number($('direction').value))) { sound.play('throw'); uiDirty = true; syncUI(); }
   });
   document.addEventListener('keydown', event => {
     if (event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || $('settings').open) return;
     const target = event.target;
     if (target instanceof Element && target.closest('button, a, select, textarea, [contenteditable="true"]')) return;
-    if (target instanceof HTMLInputElement && !['angle', 'power'].includes(target.id)) return;
+    if (target instanceof HTMLInputElement && !['angle', 'power', 'direction'].includes(target.id)) return;
     const arrows = { ArrowUp: ['angle', 1], ArrowDown: ['angle', -1], ArrowRight: ['power', 1], ArrowLeft: ['power', -1] };
+    if (mode === '3d') { arrows.q = arrows.Q = ['direction', -1]; arrows.e = arrows.E = ['direction', 1]; }
     if (!arrows[event.key] && event.code !== 'Space') return;
     event.preventDefault();
     if (game.phase !== 'aiming') return;
@@ -251,19 +284,19 @@
     } else {
       const [id, direction] = arrows[event.key], input = $(id);
       const value = Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : 0;
-      input.value = Math.max(0, Math.min(360, value + direction * (event.shiftKey ? 5 : 1)));
+      input.value = Math.max(Number(input.min), Math.min(Number(input.max), value + direction * (event.shiftKey ? 5 : 1)));
       input.focus({ preventScroll: true }); input.select();
     }
   });
-  for (const id of ['angle', 'power']) {
+  for (const id of ['angle', 'power', 'direction']) {
     const input = $(id), wrapper = input.closest('.number-wrap');
     wrapper.addEventListener('wheel', event => {
-      if (game.phase !== 'aiming' || $('settings').open || event.ctrlKey || event.metaKey || !event.deltaY) return;
+      if (input.disabled || game.phase !== 'aiming' || $('settings').open || event.ctrlKey || event.metaKey || !event.deltaY) return;
       event.preventDefault();
       const step = event.shiftKey ? 5 : 1;
       const direction = event.deltaY < 0 ? 1 : -1;
       const value = Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : 0;
-      input.value = Math.max(0, Math.min(360, value + direction * step));
+      input.value = Math.max(Number(input.min), Math.min(Number(input.max), value + direction * step));
       input.focus({ preventScroll: true }); input.select(); saveSession();
     }, { passive: false });
   }
@@ -296,10 +329,14 @@
     $('settings').showModal();
   });
   $('settings-close').addEventListener('click', () => $('settings').close());
-  $('settings').addEventListener('cancel', event => { if (!started) event.preventDefault(); });
+  $('settings').addEventListener('cancel', event => { if (!started || renderBlocked) event.preventDefault(); });
   $('settings-form').addEventListener('submit', event => {
     event.preventDefault();
     sound.stop();
+    const nextMode = $('mode-3d').checked ? '3d' : '2d';
+    if (nextMode === '3d' && !ensure3D()) return;
+    renderBlocked = false; mode = nextMode; game = mode === '3d' ? new window.Gorillas3D.Game3D() : new Game();
+    renderer3d?.resetCamera(); applyMode();
     game.reset({ names: [$('setting-name-0').value, $('setting-name-1').value], target: Number($('setting-target').value), gravity: Number($('setting-gravity').value), aimAssist: $('setting-aim-assist').checked });
     started = true; $('settings-close').hidden = false;
     sound.play('round'); $('settings').close(); drawnTerrain = -1; syncUI(true); saveSession();
@@ -311,7 +348,7 @@
       if (finale) finale.update(dt);
       else if (started) {
         const wasCharged = game.shot?.charged;
-        game.update(dt); updateAmbientLights(dt);
+        if (mode !== '3d' || !renderer3d?.lost) game.update(dt); updateAmbientLights(dt);
         if (!wasCharged && game.shot?.charged && game.phase === 'flying') {
           $('message').textContent = 'Sonnenladung! Diese Banane hat jetzt mehr Wumms.';
           sound.play('round');
@@ -341,11 +378,13 @@
   });
   window.addEventListener('pagehide', saveSession);
   document.addEventListener('visibilitychange', () => { if (document.hidden) saveSession(); });
-  for (const id of ['angle', 'power']) $(id).addEventListener('input', saveSession);
+  for (const id of ['angle', 'power', 'direction']) $(id).addEventListener('input', saveSession);
+  if (mode === '3d' && !ensure3D()) renderBlocked = true;
+  applyMode();
   syncUI();
-  if (savedInputs && game.phase === 'aiming') { $('angle').value = savedInputs[0]; $('power').value = savedInputs[1]; }
+  if (savedInputs && game.phase === 'aiming') { $('angle').value = savedInputs[0]; $('power').value = savedInputs[1]; $('direction').value = savedInputs[2] ?? 0; }
   previousPhase = game.phase;
   $('sound-toggle').setAttribute('aria-pressed', String(sound.enabled)); $('sound-label').textContent = sound.enabled ? 'Ton an' : 'Ton aus';
-  if (!started) { populateSettings(); $('settings-close').hidden = true; $('settings').showModal(); }
+  if (!started || renderBlocked) { populateSettings(); $('settings-close').hidden = true; $('settings').showModal(); }
   requestAnimationFrame(frame);
 })();

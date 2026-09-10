@@ -1,0 +1,10 @@
+<!doctype html><html lang="de"><meta charset="utf-8"><title>WebGL fallback check</title><style>body{font:14px monospace}iframe{width:1100px;height:800px}</style><h1>Restored 3D session without WebGL</h1><pre id="report">Loading…</pre><iframe id="test"></iframe><script src="../engine.js"></script><script src="../engine3d.js"></script><script>
+const g=new Gorillas3D.Game3D({names:['Preserved','Player'],target:5});g.scores=[2,1];
+sessionStorage.setItem('gorillas-session-v1',JSON.stringify({mode:'3d',game:g.snapshot(),inputs:[50,60,15],screen:'game',sound:false}));
+const frame=document.querySelector('iframe');
+fetch('../index.html').then(r=>r.text()).then(html=>{
+ const patch='<scr'+'ipt>const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){if(type.includes("webgl"))return null;return original.call(this,type,...args);};</scr'+'ipt>';
+ frame.srcdoc=html.replace('<head>','<head><base href="../">'+patch);
+ frame.onload=()=>{const d=frame.contentDocument;document.querySelector('#report').textContent=JSON.stringify({settingsOpen:d.querySelector('#settings').open,message:d.querySelector('#mode-description').textContent,namesPreserved:d.querySelector('#setting-name-0').value==='Preserved',scorePreserved:d.querySelector('#score-0').textContent==='2',twoDChoice:!d.querySelector('#mode-2d').disabled},null,2);};
+});
+</script></html>

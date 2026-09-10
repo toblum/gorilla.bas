@@ -1,0 +1,20 @@
+<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>3D renderer checks</title>
+<link rel="stylesheet" href="../style.css"><style>body{padding:20px}main{max-width:1100px;margin:auto}.scene{position:relative}#report{white-space:pre-wrap;font:14px monospace;padding:20px;background:#f9e4b8}#game3d{height:540px}#view-status{display:block}</style>
+<main><h1>3D renderer: seeded city, damage, flight, performance</h1><p id="report">Rendering 90 frames…</p><div class="scene"><canvas id="game3d" width="1100" height="540"></canvas><canvas id="hud3d" width="1100" height="540"></canvas></div><span id="view-status"></span></main>
+<script src="../engine.js"></script><script src="../engine3d.js"></script><script src="../city3d.js"></script>
+<script>
+let seed=17;const game=new Gorillas3D.Game3D({aimAssist:true},()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296));
+const renderer=new GorillaCity3D(document.querySelector('#game3d'),document.querySelector('#hud3d'));
+const samples=[],gaps=[];let frames=0,previous=0,rebuild=0;const report=document.querySelector('#report');
+function frame(time){
+ if(previous)gaps.push(time-previous);previous=time;
+ if(frames===50)game.fire(55,80,12);game.update(1/60);
+ const begin=performance.now();renderer.draw(game,time,{angle:52,power:65,direction:12},false);samples.push(performance.now()-begin);
+ if(frames===30){const b=game.buildings[8];game.destroy(b.x+b.width/2,b.height-14,b.z+b.depth-2,23);rebuild=performance.now();renderer.draw(game,time,{angle:52,power:65,direction:12},false);rebuild=performance.now()-rebuild;}
+ if(++frames<90)requestAnimationFrame(frame);else{
+ const sorted=samples.slice(2).sort((a,b)=>a-b),mean=gaps.reduce((a,b)=>a+b,0)/gaps.length;
+ report.textContent=JSON.stringify({webglError:renderer.gl.getError(),triangles:renderer.staticCount/3,drawCalls:2,medianCpuMs:+sorted[Math.floor(sorted.length*.5)].toFixed(2),p95CpuMs:+sorted[Math.floor(sorted.length*.95)].toFixed(2),damageRebuildMs:+rebuild.toFixed(2),observedFps:+(1000/mean).toFixed(1),removedVoxels:game.buildings.reduce((n,b)=>n+b.removed.size,0),canvas:[renderer.canvas.width,renderer.canvas.height]},null,2);
+ }
+}
+requestAnimationFrame(frame);
+</script></html>

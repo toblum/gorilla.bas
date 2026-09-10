@@ -1,6 +1,6 @@
 # GORILLAS .BAS
 
-Eine spielbare, deutsche Web-Hommage an QBasic Gorillas: zwei lokale Spieler, eine zufällige Hochhaus-Skyline und explosive Bananen. HTML, CSS und JavaScript, ohne Framework, Installation, externe Schriftarten oder Build-Schritt.
+Eine spielbare, deutsche Web-Hommage an QBasic Gorillas mit wählbarem 2D- und 3D-Modus: zwei lokale Spieler, eine zufällige Hochhaus-Skyline und explosive Bananen. HTML, CSS und JavaScript, ohne Framework, Installation, externe Schriftarten oder Build-Schritt.
 
 ## Starten
 
@@ -17,12 +17,14 @@ Dann [http://127.0.0.1:8080](http://127.0.0.1:8080) öffnen. Der lokale Server e
 
 ## Selbst hosten
 
-Diese neun Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
+Diese elf Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
 
 ```text
 index.html
 style.css
 engine.js
+engine3d.js
+city3d.js
 sound.js
 visuals.js
 scenery.js
@@ -39,7 +41,46 @@ Die öffentliche Adresse ist [gorillas.sparebytes.dev](https://gorillas.sparebyt
 
 Jeder Push auf `main` löst über die vorhandene GitHub-App einen Build in Coolify aus. Nixpacks führt `npm test && npm run build` aus; anschließend liefert Nginx ausschließlich das Verzeichnis `/dist` über HTTPS aus. Pull-Request-Deployments sind deaktiviert.
 
-Der Build benötigt Node.js 22 oder neuer und kopiert nur die neun Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
+Der Build benötigt Node.js 22 oder neuer und kopiert nur die elf Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
+
+## Neu in Version 1.2.2: Mehr Stadt und grünes Umland
+
+- Neue Städte umfassen **10 × 8 Blöcke**. Zwei äußere Ringe mit niedrigeren Gebäuden und Parks umgeben das zentrale Spielfeld.
+- Dichtere Mischwälder mit Nadel- und Laubbäumen, Wiesen, Waldwegen, einem kleinen See mit Steg und Picknickplätzen sowie ein Strandpavillon mit Sonnendächern beleben das Umland. Die Landschaft bleibt gebündelte statische Geometrie.
+- Jetzt stehen **zwei Windhosen auf den höchsten intakten Dächern** und **zwei verteilt am Strand**. Die Dach-Windhosen sind in allen Abmessungen um genau 10 % kleiner; die Strand-Windhosen behalten ihre Größe.
+- Spielstände mit 24 oder 48 Blöcken bleiben erhalten. Die Stadt wächst beim nächsten Rundenstart oder neuen Match; das neue Umland und die neue Windhosenverteilung erscheinen auch bei bestehenden Städten.
+
+## Neu in Version 1.2.1: Blickrichtung und Wind im Stadtbild
+
+- Gorillas drehen ihren ganzen Körper passend zum gewählten Wurf, auch ohne Zielhilfe. Der wartende Gorilla schaut zum Gegner; der erste Richtungswert zeigt ebenfalls zum Gegner. Die gedrehten Trefferflächen entsprechen der Körperausrichtung. Während des Flugs bleibt die Wurfrichtung erhalten.
+- Die Sonne bekommt zwölf räumliche Strahlen, lächelnde Augen und einen gebogenen Mund. Das Gesicht bleibt aus allen Kamerarichtungen lesbar; Sonnenkontakt wechselt kurz zum erstaunten Ausdruck.
+- Neue Runden haben **8 × 6 statt 6 × 4 Blöcke**. Ein zusätzlicher äußerer Ring mit niedrigeren Häusern und Parks umgibt die Startdächer. Strand, Promenade und Anleger wachsen mit; ein weiter Küstenboden mit Bäumen und atmosphärischem Dunst ersetzt die kleine Plattform.
+- Auf den **drei höchsten noch vorhandenen Dächern** und **am Strand** stehen rot-weiße Windhosen. Die schmalen Enden zeigen dorthin, wohin der Wind weht. Stärkerer Wind streckt die Stoffröhren, schwacher Wind lässt sie absinken, Windstille lässt sie senkrecht hängen. Bei reduzierter Bewegung bleiben sie ohne Flattern korrekt ausgerichtet.
+- Vorhandene Spielstände behalten ihre bisherige Stadt und Punkte. Der größere Blockring erscheint mit der nächsten Runde oder einem neuen Match.
+
+## Neu in Version 1.2: Die dritte Dimension
+
+Im Startdialog lässt sich zwischen **2D / Der Klassiker** und **3D / Die ganze Stadt** wählen. Über **Neues Match** kann jederzeit ein Match im anderen Modus begonnen werden. Namen, Punkteziel, Gravitation und Zielhilfe werden dabei übernommen; ein gestartetes neues Match setzt die Punkte zurück. Die vorhandene 2D-Spielphysik bleibt unverändert.
+
+Die 3D-Version zeigt ein dreidimensionales Stadtviertel im Diorama-Stil: unterschiedlich große und hohe Häuser, Straßen mit Fahrbahnmarkierungen und Autos, verbundene Grünflächen mit Bäumen, einen Brunnenplatz sowie eine Uferpromenade mit Bänken, Anleger und Boot. Gebäude und Gorillas sind echte räumliche Geometrie; die Kamera lässt sich frei um die Stadt drehen.
+
+- **Winkel** bestimmt die Höhe des Wurfs, **Stärke** die Geschwindigkeit. Beide behalten ihren bisherigen Bereich von 0 bis 360.
+- **Richtung** ist der zusätzliche horizontale Winkel von −180° bis +180°. Bei 0° wirft Spieler 1 nach Osten, Spieler 2 nach Westen. Positive Werte drehen aus der Ausgangsrichtung des jeweiligen Gorillas nach rechts, negative nach links. Die Kamera ändert diese Bezugspunkte nicht. Beispiel: Spieler 1 wirft mit +90° nach Süden, Spieler 2 mit +90° nach Norden.
+- **Q / E** verändern die Richtung; **Shift** vergrößert den Schritt auf 5°. Mausrad und direkte Zahleneingabe funktionieren für alle drei Wurffelder. Die bestehenden Pfeiltasten sowie Enter und Leertaste bleiben erhalten.
+- **Ziehen** mit Maus oder Finger dreht die Kamera, das Mausrad zoomt. **Übersicht** setzt die Kamera zurück, **Am Wurf** zeigt die Stadt aus Richtung des aktiven Gorillas. Die Schaltflächen **+ / −** zoomen auch auf Touchscreens. Bei fokussiertem Spielfeld funktionieren **A / D**, **+ / −** und **Pos1**.
+- Der **Stadtplan** hat Norden oben. Er zeigt beide Gorillas, die Banane und die gewählte horizontale Richtung. Er bleibt von der Kamera unabhängig. Bei eingeschalteter Zielhilfe zeigt zusätzlich ein räumlicher Pfeil am Gorilla Winkel, Richtung und Stärke.
+- **Wind** wirkt in beiden horizontalen Achsen. `O` steht für Osten, `S` für Süden; negative Werte stehen für Westen beziehungsweise Norden. Gravitation wirkt nach unten.
+- Einschläge entfernen dauerhaft kleine Bausteine aus der Gebäudegeometrie. Darstellung und Kollision verwenden dieselben belegten Zellen; die Löcher lassen weitere Bananen passieren. Der Explosionsradius berücksichtigt Geschwindigkeit und Wind in allen drei Achsen. Die Sonne ist ein durchfliegbares räumliches Ziel und gibt wie bisher 20 % mehr Explosionsradius.
+- Direkte Treffer, Selbsttreffer, Spielerwechsel, Jubel, Punkte und das gemeinsame Bananenmond-Finale folgen denselben Regeln wie in 2D. Gorillas bleiben auf ihrer Ausgangshöhe, auch wenn das Dach beschädigt wird. Bäume, Autos, Bänke, Dachaufbauten und Boote sind Kulisse; Gebäude und Boden sind Hindernisse.
+- Der Modus, die komplette beschädigte Stadt, Wind, Richtungswerte und laufende Würfe werden in der Browser-Session gespeichert. Einstellungen und inaktive Browser-Tabs pausieren die Physik. Kamerabewegung und Zoom beeinflussen die Physik nicht.
+
+`engine3d.js` ergänzt die unabhängige Spielphysik; `city3d.js` zeichnet mit WebGL ohne Bibliotheken, externe Assets oder Netzwerkanfragen. Statische Stadtgeometrie wird nur nach Rundenwechsel oder Schäden neu hochgeladen; Stadt und bewegliche Objekte benötigen zusammen zwei Zeichenaufrufe pro Bild. Die Renderauflösung ist auf den Faktor 1,75 begrenzt. Bei fehlendem WebGL zeigt die Moduswahl einen Hinweis; 2D bleibt verfügbar. Die Seite funktioniert weiterhin ohne Build direkt per `file://`.
+
+### Prüfung der 3D-Erweiterung
+
+`npm test` umfasst 45 Tests. Sechzehn zusätzliche Tests prüfen unter anderem 100 Städte, räumliche Flugbahnen, beidseitige Treffer, Tiefenversatz, Wind in zwei Achsen, Kollisionen bei 20/60/144 FPS, durchfliegbare Schäden, Sonnenladung, Selbsttreffer, Matchende, Session-Wiederherstellung, gedrehte Trefferflächen, den äußeren Blockring und die Windhosenplatzierung.
+
+`tests/spatial.html` prüft den Renderer mit einer reproduzierbaren Stadt, einem Krater und einem laufenden Wurf. Es zeigt WebGL-Fehlerstatus, Dreieckszahl und gemessene Frame-Zeiten. Die Messwerte gelten jeweils für den verwendeten Rechner und sind keine Garantie für andere Geräte. `tests/responsive3d.html` zeigt echte 320- und 390-Pixel-Iframes und prüft ihre Layoutbreite.
 
 ## Neu in Version 1.1
 
