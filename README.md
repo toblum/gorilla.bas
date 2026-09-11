@@ -1,6 +1,6 @@
 # GORILLAS .BAS
 
-Eine spielbare, deutsche Web-Hommage an QBasic Gorillas mit wählbarem 2D- und 3D-Modus: zwei lokale Spieler, eine zufällige Hochhaus-Skyline und explosive Bananen. HTML, CSS und JavaScript, ohne Framework, Installation, externe Schriftarten oder Build-Schritt.
+Eine spielbare, deutsche Web-Hommage an QBasic Gorillas mit wählbarem Classic-, 2D- und 3D-Modus: zwei lokale Spieler, eine zufällige Hochhaus-Skyline und explosive Bananen. HTML, CSS und JavaScript, ohne Framework, Installation, externe Schriftarten oder Build-Schritt.
 
 ## Starten
 
@@ -17,19 +17,23 @@ Dann [http://127.0.0.1:8080](http://127.0.0.1:8080) öffnen. Der lokale Server e
 
 ## Selbst hosten
 
-Diese elf Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
+Diese fünfzehn Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
 
 ```text
 index.html
 style.css
 engine.js
 engine3d.js
+view3d.js
 city3d.js
 sound.js
 visuals.js
 scenery.js
 finale.js
 game.js
+classic-font.js
+classic.js
+classic-ui.js
 favicon.svg
 ```
 
@@ -41,7 +45,17 @@ Die öffentliche Adresse ist [gorillas.sparebytes.dev](https://gorillas.sparebyt
 
 Jeder Push auf `main` löst über die vorhandene GitHub-App einen Build in Coolify aus. Nixpacks führt `npm test && npm run build` aus; anschließend liefert Nginx ausschließlich das Verzeichnis `/dist` über HTTPS aus. Pull-Request-Deployments sind deaktiviert.
 
-Der Build benötigt Node.js 22 oder neuer und kopiert nur die zwölf Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
+Der Build benötigt Node.js 22 oder neuer und kopiert nur die fünfzehn Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
+
+## Neu in Version 1.4: Classic
+
+**Classic** steht im Startdialog neben 2D und 3D zur Auswahl. Dieser eigenständige Port folgt dem EGA-Pfad des Microsoft-Originals von 1990: 640 × 350 Pixel, originale Palette, 8×14-Bitmap-Schrift, gezeichnete Gorilla-Posen, Bananen-DATA und PC-Lautsprecher-Notenfolgen. Die bisherigen Modi behalten ihre erweiterten Regeln und Darstellung.
+
+Classic spielt eine **feste Gesamtzahl von Runden** (Standard 3), nicht „zuerst 3 Siege“. Namen haben höchstens 10 Zeichen. Nach Titelbildschirm und P/V-Auswahl wird erst **Angle**, dann **Velocity** eingegeben, jeweils mit Enter bestätigt. Beide Werte erlauben 0–360 einschließlich Dezimalpunkt; Velocity wird intern wie in QBasic ganzzahlig gerundet. Leere Eingabe zählt als 0. Nach Treffer und Jubel beginnt die nächste Runde automatisch; abschließend erscheint der originale GAME-OVER-Punktestand. Es kann ein Unentschieden geben.
+
+Die Flugrechnung verwendet die ursprünglichen Zeitschritte und POINT-Kollisionsabfragen; Darstellung und Kollision teilen denselben Bildspeicher. Die Sonne reagiert nur optisch. Gebäudekrater bleiben konstant. Classic enthält keine Zielhilfe, Sonnenverstärkung, Flugspur, Kameras, Replay, Dekorationen oder Mondfinale. „Neues Match“ öffnet die gemeinsame Moduswahl; Classic-Einstellungen bleiben beim Neuladen erhalten, eine laufende Partie wird nicht fortgesetzt.
+
+**Validierung:** Die reproduzierte Originalszene stimmt in **allen 224.000 Pixeln** mit dem unabhängigen QBasic-Screenshot überein. `npm test` umfasst zusätzlich 13 Classic-Prüfungen für Grafik, Rundenzahl, Eingaben, Selbst-/Gegnertreffer, Sonnenkontakt, Bananen, Originalkollision und Krater. `tests/classic.html` zeigt den direkten Screenshotvergleich und mobile Ansichten. Quellen, Testmethode und die Grenzen bei Animationszeiten/Audio stehen in [reference/README.md](reference/README.md). Der Pixelvergleich bestätigt diese statische Szene; eine vollständige DOS-Emulation ist Classic nicht.
 
 ## Neu in Version 1.3.3
 
@@ -132,7 +146,7 @@ Als Primärquelle dient der [Microsoft-Originalquelltext GORILLA.BAS (1990), arc
 
 Übernommen sind zufällige Gebäude, Gorillas auf dem zweiten oder dritten Haus vom Rand, Wind pro Skyline, Gravitation mit Erdstandard 9,8, gespiegelte Winkel des rechten Spielers, rotierende Banane, Gebäudekrater, Selbsttreffer und die durchfliegbare Sonne mit überrascht reagierendem Gesicht. Die Fluggleichungen entsprechen dem Originalprinzip: horizontale Beschleunigung durch `Wind / 5`, vertikale Beschleunigung durch Gravitation.
 
-Diese Fassung ist neu implementiert und keine pixelgenaue Emulation. Sie nutzt eine eigene Palette und eigene Pixelgrafik, eine bildratenunabhängige Flugberechnung sowie durchgehende Kollisionsprüfung gegen eine Terrainmaske. Gebäude und Gorillas fallen nach Zerstörungen nicht herunter. Das gewünschte Matchziel bedeutet **„zuerst N Punkte“**; das Original spielte eine feste Anzahl von Runden. Netzwerkspiel, KI und zusätzliche Waffen sind nicht Bestandteil dieser ersten Version.
+Die erweiterten Modi 2D und 3D sind neu implementiert und keine pixelgenaue Emulation; für die originalgetreue EGA-Variante steht Classic zur Verfügung. Sie nutzt eine eigene Palette und eigene Pixelgrafik, eine bildratenunabhängige Flugberechnung sowie durchgehende Kollisionsprüfung gegen eine Terrainmaske. Gebäude und Gorillas fallen nach Zerstörungen nicht herunter. Das gewünschte Matchziel bedeutet **„zuerst N Punkte“**; das Original spielte eine feste Anzahl von Runden. Netzwerkspiel, KI und zusätzliche Waffen sind nicht Bestandteil dieser ersten Version.
 
 Pfeiltasten und Leertaste sind eine Komfortbedienung dieser Web-Version. Im recherchierten QBasic-Quelltext werden Winkel und Stärke als Zahlen eingegeben und mit Enter bestätigt. Die neuen Soundeffekte orientieren sich am PC-Lautsprecher-Klang, ohne die Originalmelodien exakt nachzuspielen.
 

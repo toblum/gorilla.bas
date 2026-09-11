@@ -7,6 +7,8 @@
   const sound = new window.GorillaSound();
   const scenery = new window.GorillaScenery();
   const $ = id => document.getElementById(id);
+  const classic = new window.ClassicUI(sound, () => { started = false; populateSettings(); $('settings-close').hidden = true; $('settings').showModal(); saveSession(); });
+  $('classic-intro').addEventListener('click', () => classic.advance('v'));
   const canvas = $('game'), ctx = canvas.getContext('2d');
   const city = document.createElement('canvas'); city.width = WIDTH; city.height = HEIGHT;
   const cityCtx = city.getContext('2d');
@@ -19,15 +21,19 @@
   try {
     const saved = JSON.parse(sessionStorage.getItem(sessionKey));
     const candidate = saved?.mode === '3d' ? new window.Gorillas3D.Game3D() : new Game();
-    if (saved && candidate.restore(saved.game)) {
-      game = candidate; mode = saved.mode === '3d' ? '3d' : '2d';
-      started = saved.screen !== 'welcome'; savedInputs = saved.inputs; savedFinaleAge = saved.finaleAge || 0;
+    if (saved?.mode === 'classic' && saved.classicOptions) {
+      const original = new window.GorillasClassic.ClassicGame(saved.classicOptions);
+      game.options = { ...game.options, ...original.options }; mode = 'classic';
+      sound.enabled = saved.sound !== false;
+    } else if (saved && candidate.restore(saved.game)) {
+      game = candidate; mode = saved.mode === 'classic' ? 'classic' : saved.mode === '3d' ? '3d' : '2d';
+      started = mode !== 'classic' && saved.screen !== 'welcome'; savedInputs = saved.inputs; savedFinaleAge = saved.finaleAge || 0;
       sound.enabled = saved.sound !== false;
       savedCamera = saved.camera;
     }
   } catch { /* Storage may be unavailable or an older save invalid. */ }
   function saveSession() {
-    try { sessionStorage.setItem(sessionKey, JSON.stringify({ mode, game: game.snapshot(), inputs: [$('angle').value, $('power').value, $('direction').value], camera: mode === '3d' ? renderer3d?.camera.snapshot() : null, sound: sound.enabled, screen: started ? 'game' : 'welcome', finaleAge: finale?.age || 0 })); } catch { /* Playing also works without storage. */ }
+    try { sessionStorage.setItem(sessionKey, JSON.stringify({ mode, classicOptions: mode === 'classic' ? game.options : undefined, game: game.snapshot(), inputs: [$('angle').value, $('power').value, $('direction').value], camera: mode === '3d' ? renderer3d?.camera.snapshot() : null, sound: sound.enabled, screen: started ? 'game' : 'welcome', finaleAge: finale?.age || 0 })); } catch { /* Playing also works without storage. */ }
   }
   function populateSettings() {
     for (let i = 0; i < 2; i++) $(`setting-name-${i}`).value = game.options.names[i];
@@ -37,8 +43,16 @@
     $(`mode-${mode}`).checked = true; updateModeDescription();
   }
   function updateModeDescription() {
+    const original = $('mode-classic').checked;
+    $('setting-aim-assist').closest('label').hidden = original;
+    $('setting-target-label').textContent = original ? 'Runden insgesamt' : 'Gewonnene Runden zum Sieg';
+    for (const id of ['setting-name-0', 'setting-name-1']) $(id).maxLength = original ? 10 : 18;
+    $('setting-gravity').min = original ? '0.000001' : '0.5';
+    $('setting-gravity').max = original ? '' : '30';
+    $('setting-gravity').step = original ? 'any' : '0.1';
+    $('settings-note').textContent = original ? 'Originalregeln: feste Rundenzahl, Namen bis 10 Zeichen, beliebige positive Gravitation. Winkel und Stärke werden nacheinander mit Enter bestätigt.' : 'Ein Treffer gewinnt die Runde. Gravitation: Erde 9,8 · Mond 1,6. Sonnenkontakt lädt die Banane auf: 20 % mehr Explosionsradius. Ein neues Match beginnt bei 0 : 0.';
     $('replay-option').hidden = !$('mode-3d').checked;
-    $('mode-description').textContent = $('mode-3d').checked ? rendererError || 'Winkel, Richtung, Stärke: Werft durch eine räumliche Stadt. Kamera drehen, Straßen erkunden, Dächer treffen.' : 'Das Originalgefühl: Winkel und Stärke bestimmen euren Wurf.';
+    $('mode-description').textContent = original ? 'Classic: QBasic Gorillas von 1990. Originale EGA-Pixel, ursprüngliche Spielregeln und PC-Lautsprecher-Melodien.' : $('mode-3d').checked ? rendererError || 'Winkel, Richtung, Stärke: Werft durch eine räumliche Stadt. Kamera drehen, Straßen erkunden, Dächer treffen.' : 'Das Originalgefühl: Winkel und Stärke bestimmen euren Wurf.';
   }
   function ensure3D() {
     try {
@@ -52,11 +66,13 @@
   function applyMode() {
     const spatial = mode === '3d';
     document.body.classList.toggle('mode-3d', spatial);
+    document.body.classList.toggle('mode-classic', mode === 'classic');
+    $('classic-game').hidden = $('classic-controls').hidden = mode !== 'classic';
     for (const id of ['game3d', 'hud3d', 'view-tools', 'direction-field', 'direction-help']) $(id).hidden = !spatial;
-    $('game').hidden = spatial; $('direction').disabled = !spatial;
+    $('game').hidden = spatial || mode === 'classic'; $('direction').disabled = !spatial;
     $('game').setAttribute('aria-label', 'Zwei Gorillas auf Hochhäusern. Winkel und Stärke bestimmen den Wurf.');
   }
-  for (const id of ['mode-2d', 'mode-3d']) $(id).addEventListener('change', updateModeDescription);
+  for (const id of ['mode-2d', 'mode-3d', 'mode-classic']) $(id).addEventListener('change', updateModeDescription);
   $('camera-overview').addEventListener('click', () => renderer3d?.resetCamera());
   $('camera-player').addEventListener('click', () => renderer3d?.playerCamera(game));
   $('camera-in').addEventListener('click', () => renderer3d?.zoom(.85));
@@ -168,7 +184,7 @@
   function draw(time) {
     if (mode === '3d') {
       renderer3d?.draw(game, time, { angle: $('angle').valueAsNumber, power: $('power').valueAsNumber, direction: $('direction').valueAsNumber }, reducedMotion, $('settings').open || document.hidden || Boolean(finale));
-    } else {
+    } else if (mode !== 'classic') {
     ctx.imageSmoothingEnabled = false;
     const sky = ctx.createLinearGradient(0, 0, 0, HEIGHT);
     sky.addColorStop(0, '#a6b4bc'); sky.addColorStop(.28, '#eab69f'); sky.addColorStop(.66, '#efa58b'); sky.addColorStop(1, '#c98482');
@@ -227,6 +243,7 @@
     }
   }
   function syncUI(focus = false) {
+    if (mode === 'classic') { $('result').hidden = true; uiDirty = false; return; }
     const aiming = game.phase === 'aiming', celebrating = game.phase === 'celebrating';
     const ended = celebrating || ['roundOver', 'matchOver'].includes(game.phase);
     for (let p = 0; p < 2; p++) {
@@ -271,11 +288,11 @@
   }
   $('shot-form').addEventListener('submit', event => {
     event.preventDefault();
-    if ($('settings').open || !$('shot-form').checkValidity()) return;
+    if (mode === 'classic' || $('settings').open || !$('shot-form').checkValidity()) return;
     if (game.fire(Number($('angle').value), Number($('power').value), Number($('direction').value))) { renderer3d?.closeReplay(); sound.play('throw'); uiDirty = true; syncUI(); }
   });
   document.addEventListener('keydown', event => {
-    if (event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || $('settings').open) return;
+    if (mode === 'classic' || event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || $('settings').open) return;
     const target = event.target;
     if (target instanceof Element && target.closest('button, a, select, textarea, [contenteditable="true"]')) return;
     if (target instanceof HTMLInputElement && !['angle', 'power', 'direction'].includes(target.id)) return;
@@ -306,16 +323,17 @@
     }, { passive: false });
   }
   $('sound-toggle').addEventListener('click', () => {
-    sound.setEnabled(!sound.enabled);
+    sound.setEnabled(!sound.enabled); classic.pause();
     $('sound-toggle').setAttribute('aria-pressed', String(sound.enabled));
     $('sound-label').textContent = sound.enabled ? 'Ton an' : 'Ton aus';
-    if (sound.enabled) sound.play('round');
+    if (sound.enabled && mode !== 'classic') sound.play('round');
   });
   for (const id of ['setting-target', 'setting-gravity']) {
     const input = $(id);
     input.addEventListener('wheel', event => {
       if (!$('settings').open || event.ctrlKey || event.metaKey || !event.deltaY) return;
       event.preventDefault();
+      if ($('mode-classic').checked) return;
       const step = Number(input.step) * (event.shiftKey ? 5 : 1);
       const value = Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : Number(input.min);
       input.value = Math.max(Number(input.min), Math.min(Number(input.max), value + (event.deltaY < 0 ? step : -step))).toFixed(id === 'setting-gravity' ? 1 : 0);
@@ -329,7 +347,7 @@
     if (game.continue()) { drawnTerrain = -1; syncUI(true); }
   });
   $('settings-open').addEventListener('click', () => {
-    sound.stop();
+    sound.stop(); classic.pause();
     populateSettings();
     $('settings').showModal();
   });
@@ -338,7 +356,7 @@
   $('settings-form').addEventListener('submit', event => {
     event.preventDefault();
     sound.stop();
-    const nextMode = $('mode-3d').checked ? '3d' : '2d';
+    const nextMode = $('mode-classic').checked ? 'classic' : $('mode-3d').checked ? '3d' : '2d';
     if (nextMode === '3d' && !ensure3D()) return;
     renderBlocked = false; mode = nextMode; game = mode === '3d' ? new window.Gorillas3D.Game3D() : new Game();
     renderer3d?.closeReplay(); applyMode();
@@ -347,10 +365,21 @@
     if (mode === '3d') renderer3d.camera.update(game, renderer3d.clock, reducedMotion);
     savedInputs = savedCamera = null;
     started = true; $('settings-close').hidden = false;
-    sound.play('round'); $('settings').close(); drawnTerrain = -1; syncUI(true); saveSession();
+    $('settings').close();
+    if (mode === 'classic') {
+      const options = { names: [$('setting-name-0').value, $('setting-name-1').value], target: Number($('setting-target').value), gravity: Number($('setting-gravity').value) };
+      classic.start(options); game.options = { ...game.options, ...classic.game.options };
+    } else sound.play('round');
+    drawnTerrain = -1; syncUI(true); saveSession();
   });
   function frame(time) {
     const dt = previousTime ? Math.min((time - previousTime) / 1000, .05) : 0; previousTime = time;
+    if (mode === 'classic') {
+      if (started && !$('settings').open && !document.hidden) classic.update(dt);
+      classic.draw();
+      if ($('settings').open) draw(time);
+      requestAnimationFrame(frame); return;
+    }
     if (!document.hidden) { sceneryTime += dt * 1000; if (!reducedMotion) scenery.update(dt); }
     if (!$('settings').open && !document.hidden) {
       if (finale) finale.update(dt);
@@ -382,7 +411,7 @@
   }
   document.addEventListener('visibilitychange', () => {
     previousTime = 0;
-    if (document.hidden) sound.stop();
+    if (document.hidden) { sound.stop(); classic.pause(); }
     else if (finale) sound.play('finale', finale.age);
   });
   window.addEventListener('pagehide', saveSession);

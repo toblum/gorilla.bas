@@ -7,16 +7,19 @@
   <meta name="description" content="Zwei Gorillas, eine Skyline und explosive Bananen. Der lokale Retro-Klassiker für zwei – direkt im Browser.">
   <title>GORILLAS — Das Duell über den Dächern</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=1.3.3">
-  <script src="engine.js?v=1.3.3" defer></script>
-  <script src="engine3d.js?v=1.3.3" defer></script>
-  <script src="view3d.js?v=1.3.3" defer></script>
-  <script src="city3d.js?v=1.3.3" defer></script>
-  <script src="sound.js?v=1.3.3" defer></script>
-  <script src="visuals.js?v=1.3.3" defer></script>
-  <script src="scenery.js?v=1.3.3" defer></script>
-  <script src="finale.js?v=1.3.3" defer></script>
-  <script src="game.js?v=1.3.3" defer></script>
+  <link rel="stylesheet" href="style.css?v=1.4.0">
+  <script src="engine.js?v=1.4.0" defer></script>
+  <script src="engine3d.js?v=1.4.0" defer></script>
+  <script src="view3d.js?v=1.4.0" defer></script>
+  <script src="city3d.js?v=1.4.0" defer></script>
+  <script src="sound.js?v=1.4.0" defer></script>
+  <script src="visuals.js?v=1.4.0" defer></script>
+  <script src="scenery.js?v=1.4.0" defer></script>
+  <script src="finale.js?v=1.4.0" defer></script>
+  <script src="classic-font.js?v=1.4.0" defer></script>
+  <script src="classic.js?v=1.4.0" defer></script>
+  <script src="classic-ui.js?v=1.4.0" defer></script>
+  <script src="game.js?v=1.4.0" defer></script>
 </head>
 <body>
   <main class="page">
@@ -34,6 +37,7 @@
       </div>
       <div class="arena">
         <canvas id="game" width="800" height="420" role="img" aria-label="Zwei Gorillas stehen auf gegenüberliegenden Hochhäusern. Winkel und Stärke werden unter dem Spielfeld eingegeben.">Zum Spielen benötigst du einen Browser mit Canvas-Unterstützung.</canvas>
+        <canvas id="classic-game" width="640" height="350" tabindex="0" hidden role="img" aria-label="Classic: QBasic Gorillas. Winkel und Stärke nacheinander eingeben und mit Enter bestätigen."></canvas>
         <canvas id="game3d" width="1200" height="720" tabindex="0" hidden role="img" aria-label="Dreidimensionale Stadt. Ziehen dreht die Kamera, Mausrad zoomt. A und D drehen, Plus und Minus zoomen, Pos1 zeigt die Übersicht."></canvas>
         <canvas id="hud3d" width="1200" height="720" hidden aria-hidden="true"></canvas>
         <div class="view-tools" id="view-tools" hidden>
@@ -44,6 +48,15 @@
         <div class="result" id="result" hidden>
           <div class="result-card"><canvas id="winner-portrait" width="144" height="144" role="img" aria-label="Der Sieger jubelt"></canvas><span class="eyebrow" id="result-eyebrow">VOLLTREFFER</span><h2 id="result-title">Punkt für Spieler 1!</h2><p id="result-description"></p><button class="primary-button" id="continue" type="button">Nächste Runde <span aria-hidden="true">→</span></button></div>
         </div>
+      </div>
+      <div id="classic-controls" hidden>
+        <p id="classic-status" role="status" aria-live="polite">Classic · QBasic EGA</p>
+        <form id="classic-form" autocomplete="off">
+          <label for="classic-input" id="classic-label">Angle (Winkel)</label>
+          <input id="classic-input" type="text" inputmode="decimal" spellcheck="false" aria-describedby="classic-status" aria-label="Classic Wurfeingabe">
+          <button type="submit" id="classic-submit" class="primary-button">Enter ↵</button>
+          <button type="button" id="classic-intro" class="text-button" hidden>Intro ansehen (V)</button>
+        </form>
       </div>
       <div class="control-deck">
         <div class="turn-copy"><span class="eyebrow" id="turn-label">SPIELER 1 IST DRAN</span><p id="message" role="status" aria-live="polite">Die Stadt gehört euch. Legt los!</p><span id="last-shot" class="last-shot">Dein erster Wurf wartet.</span></div>
@@ -62,27 +75,28 @@
       <span><b>02 Werfen</b>Gebäude nehmen Bananen persönlich.</span>
       <span><b>03 Punkte</b>Wer zuerst das Ziel erreicht, fliegt zum Mond.</span>
     </section>
-    <footer><span>EINE HOMMAGE AN QBASIC GORILLAS · 1990</span><a href="https://github.com/pmachapman/basic-samples/blob/master/QBASIC/GORILLA.BAS" target="_blank" rel="noopener noreferrer">Das Original <span aria-hidden="true">↗</span></a><span id="build-version">VERSION 1.3.3 · lokal</span></footer>
+    <footer><span>EINE HOMMAGE AN QBASIC GORILLAS · 1990</span><a href="https://github.com/pmachapman/basic-samples/blob/master/QBASIC/GORILLA.BAS" target="_blank" rel="noopener noreferrer">Das Original <span aria-hidden="true">↗</span></a><span id="build-version">VERSION 1.4.0 · lokal</span></footer>
   </main>
   <dialog id="settings" aria-labelledby="settings-title">
     <div class="welcome-scene"><span class="welcome-kicker">GORILLAS / EST. 1990</span><h2>Die Stadt<br>gehört euch.</h2><canvas id="welcome-art" width="400" height="230" aria-hidden="true"></canvas><span class="welcome-caption">ZWEI GORILLAS. EIN DUELL ÜBER DEN DÄCHERN.</span></div>
     <form id="settings-form">
       <div class="dialog-top"><span class="eyebrow">FRISCHE SKYLINE. NEUE CHANCE.</span><button id="settings-close" type="button" class="close-button" aria-label="Einstellungen schließen">×</button></div>
       <h2 id="settings-title">Bereit zum Abwurf?</h2><p class="dialog-description">Schnappt euch die Tastatur. Wählt eure Namen und legt fest, wie euer Duell aussehen soll.</p>
-      <fieldset class="mode-select"><legend>IN WELCHER DIMENSION SPIELT IHR?</legend>
-        <label><input type="radio" name="mode" id="mode-2d" value="2d" checked><span><b>2D <small>DER KLASSIKER</small></b><em>Eine Skyline. Euer Duell.</em></span></label>
+      <fieldset class="mode-select"><legend>WELCHEN MODUS SPIELT IHR?</legend>
+        <label><input type="radio" name="mode" id="mode-classic" value="classic"><span><b>Classic <small>QBASIC 1990</small></b><em>Die ursprünglichen Regeln und Pixel.</em></span></label>
+        <label><input type="radio" name="mode" id="mode-2d" value="2d" checked><span><b>2D <small>NEU INTERPRETIERT</small></b><em>Eine Skyline. Euer Duell.</em></span></label>
         <label><input type="radio" name="mode" id="mode-3d" value="3d"><span><b>3D <small>DIE GANZE STADT</small></b><em>Mehr Tiefe. Neue Flugbahnen.</em></span></label>
       </fieldset>
       <p class="mode-description" id="mode-description" role="status">Das Originalgefühl: Winkel und Stärke bestimmen euren Wurf.</p>
       <div class="settings-grid">
         <label>Spieler 1<input id="setting-name-0" value="Spieler 1" maxlength="18" autocomplete="off"></label>
         <label>Spieler 2<input id="setting-name-1" value="Spieler 2" maxlength="18" autocomplete="off"></label>
-        <label>Gewonnene Runden zum Sieg<input id="setting-target" type="number" min="1" max="99" value="3" step="1" required></label>
+        <label><span id="setting-target-label">Gewonnene Runden zum Sieg</span><input id="setting-target" type="number" min="1" max="99" value="3" step="1" required></label>
         <label>Gravitation (m/s²)<input id="setting-gravity" type="number" min="0.5" max="30" value="9.8" step="0.1" required></label>
       </div>
       <label class="aim-option"><input id="setting-aim-assist" type="checkbox" aria-describedby="aim-description"><span>Zielhilfe <small id="aim-description">Ein dezenter Pfeil zeigt die gewählte Wurfrichtung und Stärke.</small></span></label>
       <label class="aim-option replay-option" id="replay-option" hidden><input id="setting-replay" type="checkbox" checked aria-describedby="replay-description"><span>Einschlag-Replay <small id="replay-description">Flugende und Explosion noch einmal groß in Zeitlupe sehen. Jederzeit überspringbar.</small></span></label>
-      <p class="settings-note">Ein Treffer gewinnt die Runde. Gravitation: Erde 9,8 · Mond 1,6. Sonnenkontakt lädt die Banane auf: 20 % mehr Explosionsradius. Ein neues Match beginnt bei 0 : 0.</p>
+      <p class="settings-note" id="settings-note">Ein Treffer gewinnt die Runde. Gravitation: Erde 9,8 · Mond 1,6. Sonnenkontakt lädt die Banane auf: 20 % mehr Explosionsradius. Ein neues Match beginnt bei 0 : 0.</p>
       <button class="primary-button welcome-start" type="submit">Auf die Dächer! <span aria-hidden="true">↗</span></button>
     </form>
   </dialog>
