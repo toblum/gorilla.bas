@@ -1,0 +1,12 @@
+<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>3D mobile layout checks</title><style>body{margin:20px;background:#ddd9cc;font:14px monospace}main{display:flex;align-items:start;gap:24px}iframe{display:block;border:1px solid #444}pre{white-space:pre-wrap}</style>
+<h1>Mobile 3D: 320 and 390 CSS pixels</h1><pre id="report">Loading…</pre><main id="frames"></main>
+<script src="../engine.js"></script><script src="../engine3d.js"></script><script>
+const g=new Gorillas3D.Game3D({names:['Spieler Orange','Spieler Mint'],aimAssist:true});
+sessionStorage.setItem('gorillas-session-v1',JSON.stringify({mode:'3d',game:g.snapshot(),inputs:[45,65,12],sound:false,screen:'game'}));
+let count=0;for(const width of [320,390]){
+ const frame=document.createElement('iframe');frame.width=width;frame.height=1080;frame.src='../index.html';document.querySelector('#frames').append(frame);
+ frame.addEventListener('load',()=>{if(++count===2)requestAnimationFrame(()=>{
+ document.querySelector('#report').textContent=JSON.stringify([...document.querySelectorAll('iframe')].map(f=>{const d=f.contentDocument;return{width:f.contentWindow.innerWidth,documentWidth:d.documentElement.scrollWidth,formWidth:Math.round(d.querySelector('#shot-form').getBoundingClientRect().width),directionVisible:!d.querySelector('#direction-field').hidden,throwEnabled:!d.querySelector('#throw').disabled};}),null,2);
+ });});
+}
+</script></html>

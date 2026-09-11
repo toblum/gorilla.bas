@@ -1,0 +1,22 @@
+<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kamera und Replay prüfen</title>
+<link rel="stylesheet" href="../style.css"><style>body{padding:18px}main{max-width:1150px;margin:auto}nav{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}button{padding:8px}#report{font:12px monospace;white-space:pre-wrap}.scene{position:relative;background:#bdc7bf}#game3d{height:570px}#view-status{display:none}</style>
+<main><nav><button id="throw-test">Wurf starten</button><button id="self-test">Selbsttreffer</button><button id="overview">Übersicht</button><button id="player">Am Wurf</button><button id="next">Nächste Runde</button><label><input id="hold" type="checkbox" checked>Replay bei Explosion anhalten</label><label><input id="enabled" type="checkbox" checked>Replay aktiv</label><label><input id="reduced" type="checkbox">Reduzierte Bewegung</label></nav><pre id="report"></pre><div class="scene"><canvas id="game3d" tabindex="0"></canvas><canvas id="hud3d"></canvas></div><span id="view-status"></span></main>
+<script src="../engine.js"></script><script src="../engine3d.js"></script><script src="../view3d.js"></script><script src="../city3d.js"></script>
+<script>
+let seed=42;const game=new Gorillas3D.Game3D({names:['Orange','Mint']},()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296));
+const renderer=new GorillaCity3D(document.querySelector('#game3d'),document.querySelector('#hud3d'));
+const $=id=>document.getElementById(id);let previous=0,samples=[],replaySamples=[];
+$('throw-test').onclick=()=>game.fire(0,120,game.defaultDirection());$('self-test').onclick=()=>game.fire(0,0,0);
+$('overview').onclick=()=>renderer.resetCamera();$('player').onclick=()=>renderer.playerCamera(game);
+$('next').onclick=()=>game.newRound();$('enabled').onchange=()=>game.options.replay=$('enabled').checked;
+function frame(time){
+ const dt=previous?Math.min(.05,(time-previous)/1000):0;previous=time;
+ const replay=renderer.replay,hold=$('hold').checked&&replay&&(renderer.clock-replay.start)/1000>replay.clip.approach+.3;
+ if(!hold)game.update(dt);
+ const begin=performance.now();renderer.draw(game,time,{angle:0,power:120,direction:game.defaultDirection()},$('reduced').checked,hold);const cpu=performance.now()-begin;
+ samples.push(cpu);if(renderer.replay)replaySamples.push(cpu);if(samples.length>180)samples.shift();
+ const median=a=>a.length?[...a].sort((a,b)=>a-b)[Math.floor(a.length/2)].toFixed(1):null;
+ $('report').textContent=JSON.stringify({phase:game.phase,player:game.turn+1,round:game.round,windMarkers:renderer.windSites.map(s=>({type:s.type,location:s.y===1?'beach':'roof',scale:s.scale})),replay:!!renderer.replay,paused:!!hold,drawCalls:renderer.drawCalls,webglError:renderer.gl.getError(),cpuMs:median(samples),replayCpuMs:median(replaySamples)},null,0);
+ requestAnimationFrame(frame);
+}requestAnimationFrame(frame);
+</script></html>
