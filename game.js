@@ -15,7 +15,7 @@
   let drawnRound = 0, drawnTerrain = -1, previousPhase = '', previousTime = 0, uiDirty = true, ambientTimer = 3.5;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const sessionKey = 'gorillas-session-v1';
-  let started = false, savedInputs = null, saveTimer = 0, finale = null, savedFinaleAge = 0, sceneryTime = 0;
+  let started = false, savedInputs = null, savedCamera = null, saveTimer = 0, finale = null, savedFinaleAge = 0, sceneryTime = 0;
   try {
     const saved = JSON.parse(sessionStorage.getItem(sessionKey));
     const candidate = saved?.mode === '3d' ? new window.Gorillas3D.Game3D() : new Game();
@@ -23,24 +23,28 @@
       game = candidate; mode = saved.mode === '3d' ? '3d' : '2d';
       started = saved.screen !== 'welcome'; savedInputs = saved.inputs; savedFinaleAge = saved.finaleAge || 0;
       sound.enabled = saved.sound !== false;
+      savedCamera = saved.camera;
     }
   } catch { /* Storage may be unavailable or an older save invalid. */ }
   function saveSession() {
-    try { sessionStorage.setItem(sessionKey, JSON.stringify({ mode, game: game.snapshot(), inputs: [$('angle').value, $('power').value, $('direction').value], sound: sound.enabled, screen: started ? 'game' : 'welcome', finaleAge: finale?.age || 0 })); } catch { /* Playing also works without storage. */ }
+    try { sessionStorage.setItem(sessionKey, JSON.stringify({ mode, game: game.snapshot(), inputs: [$('angle').value, $('power').value, $('direction').value], camera: mode === '3d' ? renderer3d?.camera.snapshot() : null, sound: sound.enabled, screen: started ? 'game' : 'welcome', finaleAge: finale?.age || 0 })); } catch { /* Playing also works without storage. */ }
   }
   function populateSettings() {
     for (let i = 0; i < 2; i++) $(`setting-name-${i}`).value = game.options.names[i];
     $('setting-target').value = game.options.target; $('setting-gravity').value = game.options.gravity;
     $('setting-aim-assist').checked = game.options.aimAssist;
+    $('setting-replay').checked = game.options.replay !== false;
     $(`mode-${mode}`).checked = true; updateModeDescription();
   }
   function updateModeDescription() {
+    $('replay-option').hidden = !$('mode-3d').checked;
     $('mode-description').textContent = $('mode-3d').checked ? rendererError || 'Winkel, Richtung, Stärke: Werft durch eine räumliche Stadt. Kamera drehen, Straßen erkunden, Dächer treffen.' : 'Das Originalgefühl: Winkel und Stärke bestimmen euren Wurf.';
   }
   function ensure3D() {
     try {
       if (renderer3d?.lost) throw new Error('Die 3D-Grafik wurde unterbrochen. Bitte lade die Seite neu oder wähle 2D.');
       if (!renderer3d) renderer3d = new window.GorillaCity3D($('game3d'), $('hud3d'));
+      if (savedCamera) { renderer3d.camera.restore(savedCamera); savedCamera = null; }
       rendererError = ''; return true;
     }
     catch (error) { rendererError = error.message; $('mode-description').textContent = rendererError; return false; }
@@ -163,7 +167,7 @@
   }
   function draw(time) {
     if (mode === '3d') {
-      renderer3d?.draw(game, time, { angle: $('angle').valueAsNumber, power: $('power').valueAsNumber, direction: $('direction').valueAsNumber }, reducedMotion);
+      renderer3d?.draw(game, time, { angle: $('angle').valueAsNumber, power: $('power').valueAsNumber, direction: $('direction').valueAsNumber }, reducedMotion, $('settings').open || document.hidden || Boolean(finale));
     } else {
     ctx.imageSmoothingEnabled = false;
     const sky = ctx.createLinearGradient(0, 0, 0, HEIGHT);
@@ -244,7 +248,8 @@
     $('turn-label').textContent = ended ? (game.phase === 'matchOver' ? 'MATCH ENTSCHIEDEN' : 'RUNDE ENTSCHIEDEN') : `${game.options.names[game.turn].toLocaleUpperCase('de-DE')} ${aiming ? 'IST DRAN' : 'WIRFT'}`;
     if (aiming) {
       const last = game.lastShots[game.turn];
-      $('angle').value = last?.angle ?? 45; $('power').value = last?.power ?? 65; $('direction').value = last?.direction ?? (mode === '3d' ? game.defaultDirection() : 0);
+      // New matches and untouched turns use a neutral horizontal direction.
+      $('angle').value = last?.angle ?? 45; $('power').value = last?.power ?? 65; $('direction').value = last?.direction ?? 0;
       $('last-shot').textContent = last ? `Dein letzter Wurf: ${last.angle}° / ${mode === '3d' ? `Richtung ${last.direction}° / ` : ''}Stärke ${last.power}` : 'Dein erster Wurf wartet.';
       $('message').textContent = game.lastEvent === 'building' ? 'Nur Beton erwischt. Der nächste Versuch zählt.' : game.lastEvent === 'miss' ? 'Vorbei! Jetzt bist du am Zug.' : 'Die Stadt gehört euch. Legt los!';
       if (focus && !$('settings').open) { $('angle').focus({ preventScroll: true }); $('angle').select(); }
@@ -258,7 +263,7 @@
       $('message').textContent = celebrating ? `${name} feiert seinen Treffer!` : $('result-title').textContent;
       $('winner-portrait').setAttribute('aria-label', `${name} jubelt mit erhobenen Armen`);
       if (!celebrating && game.phase !== 'matchOver' && !$('settings').open) $('continue').focus({ preventScroll: true });
-      if (game.phase === 'matchOver') startFinale();
+      if (game.phase === 'matchOver' && (mode !== '3d' || !renderer3d?.replay)) startFinale();
     } else {
       $('message').textContent = game.phase === 'impact' ? (game.winner !== null ? 'Treffer! Das gibt einen Punkt.' : 'Die Fassade hat jetzt ein Fenster mehr.') : game.shot?.charged ? 'Sonnenladung! Diese Banane hat jetzt mehr Wumms.' : 'Banane unterwegs …';
     }
@@ -267,7 +272,7 @@
   $('shot-form').addEventListener('submit', event => {
     event.preventDefault();
     if ($('settings').open || !$('shot-form').checkValidity()) return;
-    if (game.fire(Number($('angle').value), Number($('power').value), Number($('direction').value))) { sound.play('throw'); uiDirty = true; syncUI(); }
+    if (game.fire(Number($('angle').value), Number($('power').value), Number($('direction').value))) { renderer3d?.closeReplay(); sound.play('throw'); uiDirty = true; syncUI(); }
   });
   document.addEventListener('keydown', event => {
     if (event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || $('settings').open) return;
@@ -336,8 +341,11 @@
     const nextMode = $('mode-3d').checked ? '3d' : '2d';
     if (nextMode === '3d' && !ensure3D()) return;
     renderBlocked = false; mode = nextMode; game = mode === '3d' ? new window.Gorillas3D.Game3D() : new Game();
-    renderer3d?.resetCamera(); applyMode();
-    game.reset({ names: [$('setting-name-0').value, $('setting-name-1').value], target: Number($('setting-target').value), gravity: Number($('setting-gravity').value), aimAssist: $('setting-aim-assist').checked });
+    renderer3d?.closeReplay(); applyMode();
+    game.reset({ names: [$('setting-name-0').value, $('setting-name-1').value], target: Number($('setting-target').value), gravity: Number($('setting-gravity').value), aimAssist: $('setting-aim-assist').checked, replay: $('setting-replay').checked });
+    // Reset the camera before saving, including a reload before the first animation frame.
+    if (mode === '3d') renderer3d.camera.update(game, renderer3d.clock, reducedMotion);
+    savedInputs = savedCamera = null;
     started = true; $('settings-close').hidden = false;
     sound.play('round'); $('settings').close(); drawnTerrain = -1; syncUI(true); saveSession();
   });
@@ -364,6 +372,7 @@
       syncUI(previousPhase !== '' && game.phase === 'aiming'); previousPhase = game.phase;
     }
     draw(time); requestAnimationFrame(frame);
+    if (started && game.phase === 'matchOver' && !finale && !$('settings').open && (mode !== '3d' || !renderer3d?.replay)) startFinale();
     if (finale) {
       finale.draw($('finale-art').getContext('2d'), game.winner, reducedMotion, drawGorilla);
       $('finale-progress').style.width = `${Math.min(100, finale.age / window.GorillaFinale.DURATION * 100)}%`;

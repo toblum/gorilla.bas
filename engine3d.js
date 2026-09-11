@@ -38,14 +38,18 @@
     }
     sites.sort((a, b) => b.y - a.y || a.x - b.x || a.z - b.z);
     const bounds = cityBounds(game);
-    return [...sites.slice(0, 2).map(site => ({ ...site, scale: .9 })),
-      ...[.16, .76].map(t => ({ x: bounds.left + (bounds.right - bounds.left) * t, y: 1, z: bounds.shore + 21, scale: 1 }))];
+    return [...sites.slice(0, 2).map((site, i) => ({ ...site, scale: .9, type: i ? 'windsock' : 'flag' })),
+      ...[.16, .76].map((t, i) => ({ x: bounds.left + (bounds.right - bounds.left) * t, y: 1, z: bounds.shore + 21, scale: 1, type: i ? 'flag' : 'windsock' }))];
   }
   function windPose(wind, windZ) {
     const speed = Math.hypot(wind, windZ);
     return { x: speed ? wind / speed : 0, z: speed ? windZ / speed : 0, extension: Math.min(1, speed / 14), speed };
   }
   class Game3D extends base.Game {
+    reset(options = this.options || {}) {
+      super.reset(options);
+      this.options.replay = options.replay !== false;
+    }
     newRound() {
       this.round++; this.phase = 'aiming'; this.shot = null; this.impact = null; this.winner = null;
       this.sunHit = false; this.lastEvent = 'start'; this.celebrationAge = 0; this.craters = []; this.buildings = []; this.plots = [];
@@ -168,6 +172,7 @@
       const copy = JSON.parse(JSON.stringify(state));
       for (const key of ['options', 'scores', 'turn', 'round', 'lastShots', 'phase', 'shot', 'impact', 'winner', 'sunHit', 'lastEvent', 'celebrationAge', 'buildings', 'gorillas', 'wind', 'windZ', 'plots', 'craters', 'revision']) this[key] = copy[key];
       this.buildings.forEach(b => { b.removed = new Set(b.removed); }); this.mode = '3d';
+      this.options.replay = this.options.replay !== false;
       this.gorillas.forEach((g, player) => { if (!Number.isFinite(g.heading)) g.heading = this.opponentHeading(player); });
       return true;
     }

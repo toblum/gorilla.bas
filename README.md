@@ -41,7 +41,24 @@ Die öffentliche Adresse ist [gorillas.sparebytes.dev](https://gorillas.sparebyt
 
 Jeder Push auf `main` löst über die vorhandene GitHub-App einen Build in Coolify aus. Nixpacks führt `npm test && npm run build` aus; anschließend liefert Nginx ausschließlich das Verzeichnis `/dist` über HTTPS aus. Pull-Request-Deployments sind deaktiviert.
 
-Der Build benötigt Node.js 22 oder neuer und kopiert nur die elf Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
+Der Build benötigt Node.js 22 oder neuer und kopiert nur die zwölf Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
+
+## Neu in Version 1.3.3
+
+- Das Einschlag-Replay läuft eine Sekunde länger; die Explosion wird entsprechend langsamer abgespielt. Auch vor dem Match-Finale darf es vollständig auslaufen.
+- **Neues Match** behält Punkteziel und Gravitation bei. Die Wurfwerte im Spiel werden zurückgesetzt: Winkel **45°**, Stärke **65**, Richtung **0°**. Beide Kameraansichten starten neu. Namen, Zielhilfe und Replay-Auswahl bleiben ebenfalls erhalten.
+
+## Neu in Version 1.3.2
+
+- Das Einschlag-Replay läuft eine Sekunde länger; die Explosion wird entsprechend langsamer abgespielt. Auch vor dem Match-Finale darf es vollständig auslaufen.
+
+## Neu in Version 1.3: Persönliche Kamera und Einschlag-Replay
+
+- Auf den beiden höchsten intakten Dächern stehen **eine Fahne und eine Windhose**, um 10 % verkleinert. **Eine weitere Fahne und eine weitere Windhose** stehen am Strand. Alle vier reagieren auf denselben tatsächlichen Wind; bei Windstille hängen sie herunter.
+- Die Kamera startet leicht erhöht hinter dem aktiven Gorilla und blickt über ihn zum Gegner. Beim Zugwechsel führt eine 1,4 Sekunden lange Kamerafahrt zur Ansicht des anderen Spielers. Eigene Drehungen und Zoomstufen sowie die gewählte Übersicht bleiben pro Spieler gespeichert, auch nach Neuladen. Neue Runden passen den Blickpunkt an die neuen Dachhöhen an. **Am Wurf** stellt die Ansicht hinter dem aktuellen Gorilla wieder her; **Übersicht** zeigt das Stadtpanorama. Beide Wechsel sind weich, direkte Mausbewegungen können eine Kamerafahrt übernehmen.
+- **Einschlag-Replay** ist im 3D-Startdialog standardmäßig eingeschaltet. Nach einem Treffer erscheint oben rechts der echte letzte Flugabschnitt mit Explosion und Krater als vergrößerte Zeitlupe. Die Aufnahme verwendet die tatsächliche Flugbahn und den ursprünglichen Gebäudezustand bis zum Einschlag; sie verändert weder Physik noch Punkte. Das Fenster schließt automatisch, per × oder beim nächsten Wurf. Der nächste Spieler kann sofort weiterzielen. Bei reduzierter Bewegung zeigt es eine ruhige Nahaufnahme ohne Kamerafahrt und Flackern.
+- Die Replay-Einstellung wird mit dem Match gespeichert. Bestehende Spielstände erhalten die eingeschaltete Voreinstellung. Bei geöffneten Einstellungen oder verborgenem Tab pausieren auch die Präsentationsübergänge.
+- Das Replay nutzt denselben WebGL-Kontext. Ohne Replay bleiben es zwei Zeichenaufrufe je Bild; währenddessen kommen zwei für die Nahaufnahme hinzu. Ein zusätzlicher temporärer Stadtpuffer wird beim Schließen wieder freigegeben.
 
 ## Neu in Version 1.2.2: Mehr Stadt und grünes Umland
 
@@ -52,7 +69,7 @@ Der Build benötigt Node.js 22 oder neuer und kopiert nur die elf Spieldateien. 
 
 ## Neu in Version 1.2.1: Blickrichtung und Wind im Stadtbild
 
-- Gorillas drehen ihren ganzen Körper passend zum gewählten Wurf, auch ohne Zielhilfe. Der wartende Gorilla schaut zum Gegner; der erste Richtungswert zeigt ebenfalls zum Gegner. Die gedrehten Trefferflächen entsprechen der Körperausrichtung. Während des Flugs bleibt die Wurfrichtung erhalten.
+- Gorillas drehen ihren ganzen Körper passend zum gewählten Wurf, auch ohne Zielhilfe. Der wartende Gorilla schaut zum Gegner; der neutrale Startwert für die Richtung ist 0°. Die gedrehten Trefferflächen entsprechen der Körperausrichtung. Während des Flugs bleibt die Wurfrichtung erhalten.
 - Die Sonne bekommt zwölf räumliche Strahlen, lächelnde Augen und einen gebogenen Mund. Das Gesicht bleibt aus allen Kamerarichtungen lesbar; Sonnenkontakt wechselt kurz zum erstaunten Ausdruck.
 - Neue Runden haben **8 × 6 statt 6 × 4 Blöcke**. Ein zusätzlicher äußerer Ring mit niedrigeren Häusern und Parks umgibt die Startdächer. Strand, Promenade und Anleger wachsen mit; ein weiter Küstenboden mit Bäumen und atmosphärischem Dunst ersetzt die kleine Plattform.
 - Auf den **drei höchsten noch vorhandenen Dächern** und **am Strand** stehen rot-weiße Windhosen. Die schmalen Enden zeigen dorthin, wohin der Wind weht. Stärkerer Wind streckt die Stoffröhren, schwacher Wind lässt sie absinken, Windstille lässt sie senkrecht hängen. Bei reduzierter Bewegung bleiben sie ohne Flattern korrekt ausgerichtet.
@@ -78,9 +95,9 @@ Die 3D-Version zeigt ein dreidimensionales Stadtviertel im Diorama-Stil: untersc
 
 ### Prüfung der 3D-Erweiterung
 
-`npm test` umfasst 45 Tests. Sechzehn zusätzliche Tests prüfen unter anderem 100 Städte, räumliche Flugbahnen, beidseitige Treffer, Tiefenversatz, Wind in zwei Achsen, Kollisionen bei 20/60/144 FPS, durchfliegbare Schäden, Sonnenladung, Selbsttreffer, Matchende, Session-Wiederherstellung, gedrehte Trefferflächen, den äußeren Blockring und die Windhosenplatzierung.
+`npm test` umfasst 51 Tests. Die zusätzlichen 3D-Tests prüfen unter anderem 100 Städte, räumliche Flugbahnen, beidseitige Treffer, Tiefenversatz, Wind in zwei Achsen, Kollisionen bei 20/60/144 FPS, durchfliegbare Schäden, Sonnenladung, Selbsttreffer, Matchende, Session-Wiederherstellung, gedrehte Trefferflächen, den äußeren Blockring und die Windanzeigerplatzierung, gespeicherte Kameraansichten, weiche Zugwechsel und unverfälschte Replay-Flugbahnen.
 
-`tests/spatial.html` prüft den Renderer mit einer reproduzierbaren Stadt, einem Krater und einem laufenden Wurf. Es zeigt WebGL-Fehlerstatus, Dreieckszahl und gemessene Frame-Zeiten. Die Messwerte gelten jeweils für den verwendeten Rechner und sind keine Garantie für andere Geräte. `tests/responsive3d.html` zeigt echte 320- und 390-Pixel-Iframes und prüft ihre Layoutbreite.
+`tests/spatial.html` prüft den Renderer mit einer reproduzierbaren Stadt, einem Krater und einem laufenden Wurf. Es zeigt WebGL-Fehlerstatus, Dreieckszahl und gemessene Frame-Zeiten. Die Messwerte gelten jeweils für den verwendeten Rechner und sind keine Garantie für andere Geräte. `tests/presentation3d.html` prüft Kameraperspektiven, reale Einschläge, Replay-Abbruch, reduzierte Bewegung und den Zeichenaufwand bei laufender Nahaufnahme. `tests/responsive3d.html` zeigt echte 320- und 390-Pixel-Iframes und prüft ihre Layoutbreite.
 
 ## Neu in Version 1.1
 

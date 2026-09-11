@@ -183,3 +183,14 @@ footer{font-size:13px;letter-spacing:0;color:#2f3532}
 .mode-3d .page{max-width:1280px}
 .mode-3d .arena::after{display:none}
 @media(min-width:851px){.mode-3d #game3d{height:clamp(420px,62svh,650px);aspect-ratio:auto}.mode-3d .masthead{padding-top:18px}.mode-3d .control-deck{padding-top:18px;padding-bottom:18px}}
+
+/* Broadcast-style impact close-up; the scene stays interactive underneath. */
+.replay-option{margin-top:10px}.replay-option[hidden],.replay-panel[hidden]{display:none}
+.replay-panel{position:absolute;z-index:3;pointer-events:none;border:2px solid #f2ddae;box-shadow:0 5px 22px #152e4266;animation:replay-arrive .22s ease-out}
+.replay-heading{position:absolute;left:-2px;right:-2px;top:-2px;height:27px;display:flex;align-items:center;justify-content:space-between;gap:4px;padding-left:9px;background:#263e46;color:#ffe0a1;font:700 10px var(--mono);letter-spacing:.3px}
+.replay-heading button{pointer-events:auto;background:transparent;color:#fff0c7;border:0;width:30px;height:27px;font-size:21px;line-height:1}
+.replay-heading button:hover{background:#496269}.replay-progress{position:absolute;bottom:-2px;left:-2px;right:-2px;height:3px;background:#263e46}
+.replay-progress span{height:100%;display:block;background:#ef9463}
+@keyframes replay-arrive{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+@media(max-width:640px){.replay-heading{font-size:8px;padding-left:6px}}
+@media(prefers-reduced-motion:reduce){.replay-panel{animation:none}}

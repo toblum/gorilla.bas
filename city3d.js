@@ -2,6 +2,7 @@
 (() => {
   'use strict';
   const { CELL, SUN, occupied, launchVector, cityBounds, windsockSites, windPose } = window.Gorillas3D;
+  const { CameraRig, ImpactReplay } = window.GorillaView3D;
   const palette = ['#678781', '#c68e77', '#c6bda3', '#587080', '#a5b5a0'];
   const playerColors = ['#fa8650', '#bce0bd'];
   const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
@@ -74,25 +75,27 @@
       this.uMatrix = gl.getUniformLocation(this.program, 'uMatrix'); this.uEye = gl.getUniformLocation(this.program, 'uEye');
       this.staticBuffer = gl.createBuffer(); this.dynamicBuffer = gl.createBuffer();
       gl.enable(gl.DEPTH_TEST); gl.clearColor(0,0,0,0);
-      this.resetCamera(); this.cachedGame = null; this.revision = -1; this.lost = false;
+      this.camera = new CameraRig(); this.clock = 0; this.cachedGame = null; this.revision = -1; this.lost = false;
+      this.replayPanel = document.createElement('section');
+      this.replayPanel.className = 'replay-panel'; this.replayPanel.hidden = true;
+      this.replayPanel.setAttribute('aria-label','Einschlag-Replay in Zeitlupe');
+      this.replayPanel.innerHTML = '<div class="replay-heading"><span>↶ EINSCHLAG · REPLAY</span><button type="button" aria-label="Replay schließen" title="Replay überspringen">×</button></div><div class="replay-progress"><span></span></div>';
+      canvas.parentElement.append(this.replayPanel);
+      this.replayPanel.querySelector('button').addEventListener('click',()=>this.closeReplay());
       canvas.addEventListener('webglcontextlost', event => { event.preventDefault(); this.lost = true; document.getElementById('view-status').textContent = '3D-Grafik unterbrochen. Bitte neu laden oder über Neues Match zu 2D wechseln.'; });
       canvas.addEventListener('pointerdown', e => { if (e.button !== 0) return; this.drag = { x: e.clientX, y: e.clientY, id: e.pointerId }; canvas.setPointerCapture(e.pointerId); });
-      canvas.addEventListener('pointermove', e => { if (!this.drag || this.drag.id !== e.pointerId) return; this.yaw -= (e.clientX-this.drag.x)*.006; this.pitch = Math.max(.22,Math.min(1.35,this.pitch+(e.clientY-this.drag.y)*.004)); this.drag.x=e.clientX;this.drag.y=e.clientY; });
+      canvas.addEventListener('pointermove', e => { if (!this.drag || this.drag.id !== e.pointerId) return; this.camera.orbit(-(e.clientX-this.drag.x)*.006,(e.clientY-this.drag.y)*.004); this.drag.x=e.clientX;this.drag.y=e.clientY; });
       const end = () => { this.drag = null; }; canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end); canvas.addEventListener('lostpointercapture', end);
       canvas.addEventListener('wheel', e => { if (e.ctrlKey || e.metaKey) return; e.preventDefault(); this.zoom(e.deltaY > 0 ? 1.08 : 1/1.08); }, { passive: false });
       canvas.addEventListener('keydown', e => {
-        if (e.key === 'a' || e.key === 'd') { this.yaw += e.key === 'a' ? .1 : -.1; e.preventDefault(); }
+        if (e.key === 'a' || e.key === 'd') { this.camera.orbit(e.key === 'a' ? .1 : -.1,0); e.preventDefault(); }
         if (e.key === '+' || e.key === '-') { this.zoom(e.key === '+' ? .9 : 1.1); e.preventDefault(); }
         if (e.key === 'Home') { this.resetCamera(); e.preventDefault(); }
       });
     }
-    resetCamera() { this.yaw = .42; this.pitch = .6; this.distance = 1080; this.target = [0, 55, 30]; }
-    zoom(factor) { this.distance = Math.max(330, Math.min(1500, this.distance * factor)); }
-    playerCamera(game) {
-      const g = game.gorillas[game.turn], other = game.gorillas[1-game.turn];
-      this.target = [(g.x+other.x)/2, (g.y+other.y)/2+12, (g.z+other.z)/2];
-      this.yaw = Math.atan2(g.x-other.x,g.z-other.z)+.25; this.pitch = .38; this.distance = 740;
-    }
+    resetCamera() { this.camera.overview(); }
+    zoom(factor) { this.camera.zoom(factor); }
+    playerCamera(game) { this.camera.behind(game); }
     tree(m,x,z,size=1) {
       m.box(x-1.5,1,z-1.5,3,12*size,3,'#756653');
       m.box(x-8*size,9*size,z-8*size,16*size,12*size,16*size,'#65846b');
@@ -304,6 +307,64 @@
       }
       destination.appendRotated(m,[site.x,site.y,site.z],Math.PI/2,site.scale);
     }
+    flag(destination,site,wind,windZ,time,reduced) {
+      const m=new Mesh(),pose=windPose(wind,windZ),stretch=pose.extension;
+      const dx=pose.speed?pose.x:1,dz=pose.speed?pose.z:0;
+      m.box(-2,0,-2,4,2,4,'#d4c7a7');m.line([0,1,0],[0,34,0],1.4,'#67746d');m.sphere(0,34,0,1.7,'#e8d8b5');
+      const point=(u,v)=>{
+        const wave=reduced?0:Math.sin(time/190-u*8+site.x*.03)*u*2.4*stretch;
+        const length=u*(3+stretch*24);
+        return [dx*length-dz*wave,31-v*12-(1-stretch)*u*14, dz*length+dx*wave];
+      };
+      for(let col=0;col<9;col++)for(let row=0;row<4;row++)m.quad(point(col/9,row/4),point((col+1)/9,row/4),point((col+1)/9,(row+1)/4),point(col/9,(row+1)/4),row<2?'#fff2d7':'#df6249');
+      destination.appendRotated(m,[site.x,site.y,site.z],Math.PI/2,site.scale);
+    }
+    banana(m,s) {
+      for(let i=1;i<(s.trail?.length||0);i++) { const a=s.trail[i-1],b=s.trail[i];m.line([a.x,a.y,a.z],[b.x,b.y,b.z],.5+i/s.trail.length*1.3,s.charged?'#fff8b5':'#f7d492'); }
+      const rot=s.time*9;
+      for(let i=0;i<5;i++) {const a=i*.5-1,xx=Math.cos(a)*5-3,yy=Math.sin(a)*5;m.box(s.x+xx*Math.cos(rot)-yy*Math.sin(rot)-1,s.y+xx*Math.sin(rot)+yy*Math.cos(rot)-1,s.z-1,2.8,2.8,2.8,i===0?'#907144':'#ffe17a');}
+    }
+    explosion(m,hit,reduced) {
+      const t=hit.age;
+      if(t<0||t>=1.7)return;
+      if(t<.35)m.sphere(hit.x,hit.y,hit.z,hit.radius*Math.sin(Math.min(1,t/.35)*Math.PI/2),t<.12?'#fff2b0':'#f2a154',true);
+      if(!reduced)for(let i=0;i<18;i++) { const a=i*2.399,r=hit.radius*(.6+t*2),x=hit.x+Math.cos(a)*r,z=hit.z+Math.sin(a)*r,y=hit.y+10+t*(25+i%5*8)-t*t*35,size=Math.max(.1,(1-t/1.7)*(i%3+1));m.box(x,y,z,size,size,size,i%3?'#dcac77':'#65706a'); }
+    }
+    closeReplay() {
+      if(this.replay)this.gl.deleteBuffer(this.replay.beforeBuffer);
+      this.replay=null;this.replayPanel.hidden=true;
+    }
+    observeReplay(game) {
+      if(this.cachedGame!==game||this.replay?.round!==game.round||game.options.replay===false||game.phase==='flying')this.closeReplay();
+      if(game.phase!=='impact'||this.seenImpact===game.impact)return;
+      this.seenImpact=game.impact;
+      if(game.options.replay===false||!game.shot||this.cachedGame!==game||game.impact.age>.2)return;
+      this.closeReplay();
+      this.replay={clip:new ImpactReplay(game.shot,game.impact,game.wind,game.options.gravity,game.windZ),start:this.clock,round:game.round,
+        beforeBuffer:this.staticBuffer,beforeCount:this.staticCount,gorillas:game.gorillas.map((g,i)=>({...g,alive:g.alive||(game.impact.type==='gorilla'&&game.impact.player===i)}))};
+      // Preserve the pre-impact GPU buffer. The normal rebuild creates the damaged version once.
+      this.staticBuffer=this.gl.createBuffer();this.replayPanel.hidden=false;
+    }
+    drawReplay(game,reduced,ratio) {
+      const replay=this.replay;if(!replay)return;
+      const elapsed=(this.clock-replay.start)/1000,frame=replay.clip.frame(elapsed);
+      if(frame.done){this.closeReplay();return;}
+      const w=Math.min(330,Math.max(170,this.width*.32)),h=Math.round(w*.62),x=this.width-w-14,y=74;
+      const gl=this.gl,left=Math.round(x*ratio),bottom=Math.round((this.height-y-h)*ratio),width=Math.round(w*ratio),height=Math.round(h*ratio);
+      Object.assign(this.replayPanel.style,{left:`${x}px`,top:`${y-27}px`,width:`${w}px`,height:`${h+30}px`});
+      this.replayPanel.querySelector('.replay-progress span').style.width=`${frame.progress*100}%`;
+      const clip=replay.clip,impactAge=reduced ? .28 : frame.impactAge,mesh=new Mesh();
+      replay.gorillas.forEach((g,i)=>{if(impactAge<0||clip.hit.type!=='gorilla'||clip.hit.player!==i)this.gorilla(mesh,g,i,0,false,true);});
+      if(impactAge<0)this.banana(mesh,{...frame.point,time:elapsed*1.65,charged:clip.shot.charged});
+      else this.explosion(mesh,{...clip.hit,age:impactAge},reduced);
+      this.ctx.clearRect(x-2,y-28,w+4,h+34);
+      gl.enable(gl.SCISSOR_TEST);gl.scissor(left,bottom,width,height);gl.viewport(left,bottom,width,height);
+      gl.clearColor(.70,.76,.73,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.clearColor(0,0,0,0);
+      gl.uniformMatrix4fv(this.uMatrix,false,matrix(clip.eye,clip.target,w/h));gl.uniform3fv(this.uEye,clip.eye);
+      this.renderBuffer(impactAge<0?replay.beforeBuffer:this.staticBuffer,impactAge<0?replay.beforeCount:this.staticCount);
+      this.renderBuffer(this.dynamicBuffer,this.upload(this.dynamicBuffer,mesh,gl.DYNAMIC_DRAW));
+      gl.disable(gl.SCISSOR_TEST);gl.viewport(0,0,this.canvas.width,this.canvas.height);
+    }
     gorilla(destination,g,player,time,celebrate,reduced) {
       if(!g.alive)return;
       const m=new Mesh();
@@ -325,6 +386,7 @@
     }
     upload(buffer,mesh,usage) { const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(mesh.data),usage);return mesh.data.length/9; }
     renderBuffer(buffer,count) {
+      this.drawCalls++;
       const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
       this.attributes.forEach((loc,i)=>{gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,3,gl.FLOAT,false,36,i*12);});
       gl.drawArrays(gl.TRIANGLES,0,count);
@@ -333,22 +395,25 @@
       const m=this.mvp, w=m[3]*x+m[7]*y+m[11]*z+m[15];
       return {x:((m[0]*x+m[4]*y+m[8]*z+m[12])/w*.5+.5)*this.width,y:(.5-(m[1]*x+m[5]*y+m[9]*z+m[13])/w*.5)*this.height,visible:w>0};
     }
-    draw(game,time,aim,reduced) {
+    draw(game,time,aim,reduced,paused=false) {
+      this.drawCalls=0;
       if(this.lost)return;
       const width=this.canvas.clientWidth,height=this.canvas.clientHeight;
       if(!width||!height)return;
       const ratio=Math.min(window.devicePixelRatio||1,1.75);
       if(this.canvas.width!==Math.round(width*ratio)||this.canvas.height!==Math.round(height*ratio)) { this.canvas.width=Math.round(width*ratio);this.canvas.height=Math.round(height*ratio);this.hud.width=this.canvas.width;this.hud.height=this.canvas.height; }
       this.width=width;this.height=height;this.ctx.setTransform(ratio,0,0,ratio,0,0);
-      const dist=this.distance*Math.max(1,1.45/(width/height));
-      const eye=[this.target[0]+Math.sin(this.yaw)*Math.cos(this.pitch)*dist,this.target[1]+Math.sin(this.pitch)*dist,this.target[2]+Math.cos(this.yaw)*Math.cos(this.pitch)*dist];
-      this.mvp=matrix(eye,this.target,width/height);
+      this.clock+=paused?0:Math.max(0,Math.min(50,time-(this.lastTime??time)));this.lastTime=time;
+      const pose=this.camera.update(game,this.clock,reduced),dist=pose.distance*Math.max(1,1.45/(width/height));
+      const eye=[pose.target[0]+Math.sin(pose.yaw)*Math.cos(pose.pitch)*dist,pose.target[1]+Math.sin(pose.pitch)*dist,pose.target[2]+Math.cos(pose.yaw)*Math.cos(pose.pitch)*dist];
+      this.mvp=matrix(eye,pose.target,width/height);
       const gl=this.gl;gl.viewport(0,0,this.canvas.width,this.canvas.height);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);gl.uniformMatrix4fv(this.uMatrix,false,this.mvp);gl.uniform3fv(this.uEye,eye);
+      this.observeReplay(game);
       if(this.cachedGame!==game||this.revision!==game.revision) { this.staticCity(game);this.cachedGame=game;this.revision=game.revision; }
       this.renderBuffer(this.staticBuffer,this.staticCount);
       const m=new Mesh();
       this.sun(m,game,eye,time,reduced);
-      for(const site of this.windSites)this.windsock(m,site,game.wind,game.windZ,time,reduced);
+      for(const site of this.windSites)this[site.type==='flag'?'flag':'windsock'](m,site,game.wind,game.windZ,time,reduced);
       game.setAim(aim.angle,aim.direction);
       game.gorillas.forEach((g,p)=>{
         this.gorilla(m,g,p,time,game.winner===p&&game.phase!=='impact',reduced);
@@ -360,18 +425,11 @@
         m.line(a,b,1.8,playerColors[game.turn]);m.sphere(...b,3,playerColors[game.turn]);
       }
       const s=game.shot;
-      if(s&&game.phase==='flying') {
-        for(let i=1;i<s.trail.length;i++) { const a=s.trail[i-1],b=s.trail[i];m.line([a.x,a.y,a.z],[b.x,b.y,b.z],.5+i/s.trail.length*1.3,s.charged?'#fff8b5':'#f7d492'); }
-        const rot=s.time*9;
-        for(let i=0;i<5;i++) {const a=i*.5-1,xx=Math.cos(a)*5-3,yy=Math.sin(a)*5;m.box(s.x+xx*Math.cos(rot)-yy*Math.sin(rot)-1,s.y+xx*Math.sin(rot)+yy*Math.cos(rot)-1,s.z-1,2.8,2.8,2.8,i===0?'#907144':'#ffe17a');}
-      }
-      if(game.impact&&game.impact.age<1.7) {
-        const hit=game.impact,t=hit.age;
-        if(t<.35)m.sphere(hit.x,hit.y,hit.z,hit.radius*Math.sin(Math.min(1,t/.35)*Math.PI/2),t<.12?'#fff2b0':'#f2a154',true);
-        if(!reduced)for(let i=0;i<18;i++) { const a=i*2.399,r=hit.radius*(.6+t*2),x=hit.x+Math.cos(a)*r,z=hit.z+Math.sin(a)*r,y=hit.y+10+t*(25+i%5*8)-t*t*35,size=Math.max(.1,(1-t/1.7)*(i%3+1));m.box(x,y,z,size,size,size,i%3?'#dcac77':'#65706a'); }
-      }
+      if(s&&game.phase==='flying')this.banana(m,s);
+      if(game.impact)this.explosion(m,game.impact,reduced);
       const count=this.upload(this.dynamicBuffer,m,gl.DYNAMIC_DRAW);this.renderBuffer(this.dynamicBuffer,count);
       this.drawHUD(game,aim);
+      this.drawReplay(game,reduced,ratio);
     }
     drawHUD(game,aim) {
       const c=this.ctx,w=this.width,h=this.height;c.clearRect(0,0,w,h);
