@@ -55,3 +55,9 @@ test('Classic: seven-pixel crater is independent of velocity and RAF frequency',
 test('Classic: no upper-screen shortcut or path acceleration',()=>{
  const g=blank();g.gorillas[0]={x:100,y:100};g.fire(90,360);g.update(.1);g.screen.pixels.fill(0);for(let i=0;i<10;i++)g.stepShot();assert.ok(g.shot.y<0);assert.equal(g.phase,'flying');assert.ok(Math.abs(g.shot.t-1)<1e-10);
 });
+test('Classic: dot-only angle and velocity behave like QBasic VAL zero',()=>{
+ const g=fixture();assert.ok(g.enter('.'));assert.ok(g.enter('.'));assert.equal(g.phase,'throwing');assert.equal(g.shot.vx,0);assert.equal(g.shot.vy,0);until(g,()=>g.phase==='celebrating');assert.equal(g.winner,1);
+});
+test('Classic: self-hit shortcut uses rounded INTEGER velocity at the 1.5 boundary',()=>{
+ for(const [velocity,point] of [[1.49,1],[1.5,0],[1.99,0],[2,0]]){const g=fixture();g.fire(45,velocity);assert.equal(g.shot.point,point);}
+});

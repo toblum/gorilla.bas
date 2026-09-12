@@ -1,7 +1,7 @@
 import { mkdir, copyFile, readFile, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 
-const files = ['index.html', 'style.css', 'engine.js', 'engine3d.js', 'view3d.js', 'city3d.js', 'sound.js', 'visuals.js', 'scenery.js', 'finale.js', 'game.js', 'classic-font.js', 'classic.js', 'classic-ui.js', 'favicon.svg'];
+const files = ['index.html', 'style.css', 'engine.js', 'engine3d.js', 'view3d.js', 'city3d.js', 'sound.js', 'visuals.js', 'scenery.js', 'finale.js', 'game.js', 'classic-font.js', 'classic.js', 'classic-ui.js', 'classic-sound.js', 'favicon.svg'];
 let commit = process.env.SOURCE_COMMIT || process.env.GITHUB_SHA;
 if (!commit) {
   try { commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(); } catch { commit = 'local'; }

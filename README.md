@@ -17,7 +17,7 @@ Dann [http://127.0.0.1:8080](http://127.0.0.1:8080) öffnen. Der lokale Server e
 
 ## Selbst hosten
 
-Diese fünfzehn Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
+Diese sechzehn Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
 
 ```text
 index.html
@@ -34,6 +34,7 @@ game.js
 classic-font.js
 classic.js
 classic-ui.js
+classic-sound.js
 favicon.svg
 ```
 
@@ -45,7 +46,7 @@ Die öffentliche Adresse ist [gorillas.sparebytes.dev](https://gorillas.sparebyt
 
 Jeder Push auf `main` löst über die vorhandene GitHub-App einen Build in Coolify aus. Nixpacks führt `npm test && npm run build` aus; anschließend liefert Nginx ausschließlich das Verzeichnis `/dist` über HTTPS aus. Pull-Request-Deployments sind deaktiviert.
 
-Der Build benötigt Node.js 22 oder neuer und kopiert nur die fünfzehn Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
+Der Build benötigt Node.js 22 oder neuer und kopiert nur die sechzehn Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
 
 ## Neu in Version 1.4: Classic
 
@@ -55,7 +56,7 @@ Classic spielt eine **feste Gesamtzahl von Runden** (Standard 3), nicht „zuers
 
 Die Flugrechnung verwendet die ursprünglichen Zeitschritte und POINT-Kollisionsabfragen; Darstellung und Kollision teilen denselben Bildspeicher. Die Sonne reagiert nur optisch. Gebäudekrater bleiben konstant. Classic enthält keine Zielhilfe, Sonnenverstärkung, Flugspur, Kameras, Replay, Dekorationen oder Mondfinale. „Neues Match“ öffnet die gemeinsame Moduswahl; Classic-Einstellungen bleiben beim Neuladen erhalten, eine laufende Partie wird nicht fortgesetzt.
 
-**Validierung:** Die reproduzierte Originalszene stimmt in **allen 224.000 Pixeln** mit dem unabhängigen QBasic-Screenshot überein. `npm test` umfasst zusätzlich 13 Classic-Prüfungen für Grafik, Rundenzahl, Eingaben, Selbst-/Gegnertreffer, Sonnenkontakt, Bananen, Originalkollision und Krater. `tests/classic.html` zeigt den direkten Screenshotvergleich und mobile Ansichten. Quellen, Testmethode und die Grenzen bei Animationszeiten/Audio stehen in [reference/README.md](reference/README.md). Der Pixelvergleich bestätigt diese statische Szene; eine vollständige DOS-Emulation ist Classic nicht.
+**Validierung:** Die reproduzierte Originalszene stimmt in **allen 224.000 Pixeln** mit dem unabhängigen QBasic-Screenshot überein. `npm test` umfasst zusätzlich 15 Classic-Engine-Prüfungen für Grafik, Rundenzahl, Eingaben, Selbst-/Gegnertreffer, Sonnenkontakt, Bananen, Originalkollision und Krater. `tests/classic.html` zeigt den direkten Screenshotvergleich und mobile Ansichten. `tests/classic-audio.html` misst die Browser-Tonausgabe und bietet Hörproben. Weitere Tests sichern Originalnoten, QBasic-Oktaven, Intro-Puffer, Stummschaltung und den GAME-OVER-Button ab. Quellen, Testmethode und die Grenzen bei Animationszeiten/Audio stehen in [reference/README.md](reference/README.md). Der Pixelvergleich bestätigt diese statische Szene; eine vollständige DOS-Emulation ist Classic nicht.
 
 ## Neu in Version 1.3.3
 

@@ -3,12 +3,12 @@
   'use strict';
   const {ClassicGame,Screen,sprites,palette}=root.GorillasClassic;
   const $=id=>document.getElementById(id);
-  const melodies={throw:'MBO0L32A-L64CL16BL64A+',building:'MBO0L32EFGEFDC',gorilla:'MBO0L16EFGEFDC',dance:'MFO0L32EFGEFDC',title:'MBT160O1L8CDEDCDL4ECC'};
+  const {Score,Speaker,melodies}=root.ClassicSound;
   class ClassicUI {
     constructor(sound,onEnd){
-      this.sound=sound;this.onEnd=onEnd;this.game=null;this.stage='title';this.lastPhase='';this.age=0;this.tempo=120;this.octave=4;this.length=4;this.audioEnd=0;
+      this.sound=sound;this.onEnd=onEnd;this.game=null;this.stage='title';this.lastPhase='';this.age=0;this.score=new Score();this.speaker=new Speaker(sound);
       this.canvas=$('classic-game');this.ctx=this.canvas.getContext('2d');this.input=$('classic-input');
-      $('classic-form').addEventListener('submit',e=>{e.preventDefault();if(!this.active())return;if(this.stage!=='play')this.advance();else if(this.game.phase==='aiming'){this.game.enter(this.input.value);this.sync(true);}});
+      $('classic-form').addEventListener('submit',e=>{e.preventDefault();if(!this.active())return;if(this.stage!=='play'||this.game.phase==='gameOver')this.advance();else if(this.game.phase==='aiming'){this.game.enter(this.input.value);this.sync(true);}});
       this.input.addEventListener('input',()=>{if(this.game?.phase==='aiming'&&this.stage==='play'){this.game.input=this.input.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1');this.input.value=this.game.input;this.game.prompt();}});
       this.canvas.addEventListener('pointerdown',()=>{if(this.stage==='play'&&this.game.phase==='aiming')this.input.focus({preventScroll:true});else this.canvas.focus({preventScroll:true});});
       document.addEventListener('keydown',e=>{
@@ -16,13 +16,13 @@
         if(this.stage!=='play'||this.game.phase==='gameOver'){e.preventDefault();this.advance(e.key);}
       });
     }
-    pause(){this.audioEnd=0;}
+    pause(){this.speaker.reset();if(this.stage==='intro')this.resumeIntro=true;}
     active(){return document.body.classList.contains('mode-classic')&&this.game;}
-    start(options){this.game=new ClassicGame(options);this.stage='title';this.age=0;this.lastPhase='';this.tempo=120;this.octave=4;this.length=4;this.audioEnd=0;this.play(melodies.title);this.sync();this.canvas.focus({preventScroll:true});}
+    start(options){this.game=new ClassicGame(options);this.stage='title';this.age=0;this.lastPhase='';this.score=new Score();this.speaker.reset();this.resumeIntro=false;this.play(melodies.title);this.sync();this.canvas.focus({preventScroll:true});}
     advance(key='p'){
       if(this.stage==='title'){this.stage='choice';this.age=0;}
-      else if(this.stage==='choice'){this.stage=key.toLowerCase()==='v'?'intro':'play';this.age=0;this.introStep=-1;}
-      else if(this.stage==='intro'){this.stage='play';this.sound.stop();this.audioEnd=0;}
+      else if(this.stage==='choice'){this.stage=key.toLowerCase()==='v'?'intro':'play';this.age=0;this.introStep=-1;this.sound.stop();this.speaker.reset();if(this.stage==='intro'){this.intro=this.score.intro();this.speaker.play(this.intro);this.resumeIntro=false;}}
+      else if(this.stage==='intro'){this.stage='play';this.sound.stop();this.speaker.reset();}
       else if(this.game.phase==='gameOver'){this.onEnd();return;}
       this.sync(true);
     }
@@ -37,31 +37,13 @@
       $('classic-status').textContent=aiming?`${this.game.options.names[this.game.turn]} · ${this.game.inputStage==='angle'?'Winkel':'Stärke'} eingeben und Enter drücken.`:over?`Endstand ${this.game.scores.join(' : ')} nach ${this.game.options.target} Runden.`:'Classic · QBasic EGA';
       if(focus&&!$('settings').open){if(aiming)this.input.focus({preventScroll:true});else this.canvas.focus({preventScroll:true});}
     }
-    play(mml){
-      const sound=this.sound;if(sound.enabled)sound.unlock();
-      const context=sound.enabled&&sound.available?sound.context:null;let time=context?Math.max(context.currentTime+.005,this.audioEnd):0,i=0;
-      const number=()=>{let n='';while(/\d/.test(mml[i]||'')&&i<mml.length)n+=mml[i++];return Number(n)||0;};
-      while(i<mml.length){let ch=mml[i++].toUpperCase();
-        if(ch==='M'){i++;continue;}if(ch==='T'){this.tempo=number();continue;}if(ch==='O'){this.octave=number();continue;}if(ch==='L'){this.length=number();continue;}
-        if(ch==='>'){this.octave++;continue;}if(ch==='<'){this.octave--;continue;}
-        if(!'ABCDEFGNP'.includes(ch))continue;
-        let midi=0,len=this.length;
-        if(ch==='N'){const n=number();midi=n?n+11:0;}
-        else if(ch==='P')len=number()||len;
-        else {midi=12*(this.octave+1)+{C:0,D:2,E:4,F:5,G:7,A:9,B:11}[ch];if(mml[i]==='-'||mml[i]==='+'||mml[i]==='#'){midi+=mml[i++]==='-'?-1:1;}len=number()||len;}
-        let duration=240/this.tempo/len;if(mml[i]==='.'){i++;duration*=1.5;}
-        if(midi&&context){const voice=context.createOscillator(),gain=context.createGain();voice.type='square';voice.frequency.value=440*2**((midi-69)/12);gain.gain.setValueAtTime(.035,time);gain.gain.setValueAtTime(0,time+duration*.875);voice.connect(gain);gain.connect(context.destination);sound.voices.add(voice);voice.onended=()=>{sound.voices.delete(voice);voice.disconnect();gain.disconnect();};voice.start(time);voice.stop(time+duration);}
-        time+=duration;
-      }
-      this.audioEnd=time;
-    }
+    play(mml){this.speaker.play(this.score.compile(mml));}
     update(dt){
       if(!this.game)return;this.age+=dt;
       if(this.stage==='intro'){
-        const step=this.age<1?-1:this.age<2.2?Math.floor((this.age-1)/.3):4+Math.floor((this.age-2.2)/.1);
-        if(step!==this.introStep&&step>=0){this.introStep=step;const phrases=['T120O1L16B9N0BAAN0BN0BN0BAAAN0B9N0BAAN0B','O2L16E-9N0E-D-D-N0E-N0E-N0E-D-D-D-N0E-9N0E-D-D-N0E-','O2L16G-9N0G-EEN0G-N0G-N0G-EEEN0G-9N0G-EEN0G-','O2L16B9N0BAAN0G-N0G-N0G-EEEN0O1B9N0BAAN0B'];this.play(step<4?phrases[step]:'T160O0L32EFGEFDC');}
-        if(this.age>=3){this.stage='play';this.sync(true);}
-
+        if(this.resumeIntro&&this.sound.enabled){this.speaker.play(this.intro,this.age);this.resumeIntro=false;}
+        this.introStep=-1;for(const pose of this.intro.poses)if(pose.time<=this.age)this.introStep=pose.step;
+        if(this.age>=this.intro.duration){this.stage='play';this.speaker.reset();this.sync(true);}
       }
       if(this.stage==='play'){
         this.game.update(dt);

@@ -1,0 +1,42 @@
+<!doctype html><html lang="de"><meta charset="utf-8"><title>Classic · Audiovalidierung</title>
+<style>body{font:16px/1.5 system-ui;max-width:950px;margin:30px;background:#f3eedf;color:#202b2c}button{padding:12px;margin:4px}li{margin:8px}audio{display:block}</style>
+<h1>Classic · Originalnoten und Web-Audio-Signal</h1>
+<p>Die Prüfungen rendern den echten Browser-Oszillator. O3 C muss 261,626 Hz ergeben; MN schaltet nach 7/8 der Notendauer ab. Die Hörproben verwenden die unveränderten PLAY-Folgen aus GORILLA.BAS mit korrigierter Oktave und höherem Pegel. Keine Aufnahme eines historischen PC-Lautsprechers.</p>
+<button id="run">Signal prüfen</button><button id="stop">Ton stoppen</button><div id="listen"></div><ul id="results"></ul>
+<script src="../sound.js"></script><script src="../classic-sound.js"></script><script>
+const live=new GorillaSound(),speaker=new ClassicSound.Speaker(live);
+for(const [name,mml] of Object.entries(ClassicSound.melodies)){
+ const button=document.createElement('button');button.textContent=name+' anhören';button.onclick=()=>{live.stop();speaker.reset();const score=new ClassicSound.Score();score.compile(ClassicSound.melodies.title);speaker.play(score.compile(mml));};document.querySelector('#listen').append(button);
+}
+const intro=document.createElement('button');intro.textContent='Intro anhören';intro.onclick=()=>{live.stop();speaker.reset();speaker.play(new ClassicSound.Score().intro());};document.querySelector('#listen').append(intro);
+document.querySelector('#stop').onclick=()=>{live.stop();speaker.reset();};
+async function render(score,muted=false,offset=0){
+ const context=new OfflineAudioContext(1,Math.ceil((score.duration+.1)*44100),44100);
+ const wrapper={currentTime:0,state:'running',destination:context.destination,createOscillator:context.createOscillator.bind(context),createGain:context.createGain.bind(context)};
+ const sound=new GorillaSound(()=>wrapper);sound.setEnabled(!muted);new ClassicSound.Speaker(sound).play(score,offset);
+ return (await context.startRendering()).getChannelData(0);
+}
+function rms(samples,start,end){const a=Math.ceil(start*44100),b=Math.floor(end*44100);let energy=0;for(let i=a;i<b;i++)energy+=samples[i]**2;return Math.sqrt(energy/(b-a));}
+document.querySelector('#run').onclick=async()=>{
+ const list=document.querySelector('#results');list.replaceChildren();
+ const result=(name,pass,detail)=>{const li=document.createElement('li');li.textContent=`${pass?'PASS':'FAIL'} ${name}: ${detail}`;list.append(li);};
+ try{
+  const middle=new ClassicSound.Score().compile('T120O3L4C'),samples=await render(middle);
+  const crossings=[];for(let i=1;i<samples.length;i++)if(samples[i-1]<=0&&samples[i]>0&&i/44100>.03&&i/44100<.4)crossings.push(i);
+  const hz=44100*(crossings.length-1)/(crossings.at(-1)-crossings[0]);
+  const level=rms(samples,.03,.4),silence=rms(samples,.45,.49);
+  result('O3 C',Math.abs(hz-261.6255653)<.15,`${hz.toFixed(3)} Hz`);
+  result('Pegel',level>.19&&level<.25,`RMS ${level.toFixed(4)} (vorher etwa 0,035)`);
+  result('MN-Pause',silence<1e-7,`RMS ${silence.toFixed(8)}`);
+  for(const [name,mml] of Object.entries(ClassicSound.melodies)){
+   const parser=new ClassicSound.Score();parser.compile(ClassicSound.melodies.title);const score=parser.compile(mml),pcm=await render(score);
+   const peak=pcm.reduce((a,b)=>Math.max(a,Math.abs(b)),0);result(name,peak>.2&&peak<.4,`${score.notes.length} Noten, ${score.duration.toFixed(6)} s, Peak ${peak.toFixed(4)}`);
+  }
+  const score=new ClassicSound.Score().intro(),pcm=await render(score);
+  result('Intro vollständig',pcm.some((v,i)=>i/44100>15&&Math.abs(v)>.1),`${score.notes.length} Noten/Pausen, ${score.duration.toFixed(6)} s`);
+  const muted=await render(middle,true);result('Stumm',muted.every(v=>v===0),'keine Samples');
+  const resumed=await render(new ClassicSound.Score().compile('T120O3L4C N0 D'),false,.7);
+  result('Fortsetzen in Pause',rms(resumed,.01,.29)===0&&rms(resumed,.32,.6)>.19,'Pause bis 0,305 s erhalten');
+ }catch(error){result('Browseraudio',false,error.message);}
+};
+</script></html>

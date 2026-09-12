@@ -5,7 +5,7 @@
 `GORILLA.BAS` ist der unveränderte Microsoft-Quelltext von 1990, bezogen am 11.09.2026 aus:
 https://raw.githubusercontent.com/pmachapman/basic-samples/master/QBASIC/GORILLA.BAS
 
-Copyright-Vermerk im Original bleibt erhalten. `classic.js` portiert den EGA-Pfad (`SCREEN 9`, 640 × 350) von `SetScreen`, `DrawGorilla`, `DoSun`, `EGABanana`, `MakeCityScape`, `PlaceGorillas`, `GetNum`, `PlotShot`, `DoExplosion`, `ExplodeGorilla`, `VictoryDance` und `PlayGame`. `classic-ui.js` verbindet die ursprüngliche Texteingabe und PLAY-Melodien mit Canvas, HTML und Web Audio.
+Copyright-Vermerk im Original bleibt erhalten. `classic.js` portiert den EGA-Pfad (`SCREEN 9`, 640 × 350) von `SetScreen`, `DrawGorilla`, `DoSun`, `EGABanana`, `MakeCityScape`, `PlaceGorillas`, `GetNum`, `PlotShot`, `DoExplosion`, `ExplodeGorilla`, `VictoryDance` und `PlayGame`. `classic-ui.js` verbindet die ursprüngliche Texteingabe mit Canvas und HTML; `classic-sound.js` setzt die PLAY-Melodien in Web Audio um.
 
 `EGA8.F14`: IBM-EGA-Zeichensatz, 256 CP437-Zeichen à 14 Bytes aus der historischen Font-Sammlung von VileR:
 https://github.com/viler-int10h/vga-text-mode-fonts/blob/master/FONTS/PC-IBM/EGA8.F14
@@ -33,3 +33,16 @@ https://images.launchbox-app.com/14b32e09-2222-4482-9d6b-833bcf961650.png
 - Der Screenshot bestätigt die **statische EGA-Szene** pixelgenau. Bewegte Explosionen, Intro und Tonausgabe sind quelltextbasierte Ports, aber nicht Frame für Frame mit einer laufenden DOS-Maschine verglichen.
 - Browser-Zufall ersetzt das zeitabhängige QBasic-RND-Seeding. Browser-Zeitgeber ersetzen `CalcDelay`, CPU-Schleifen und `SPEEDCONST`; die ursprüngliche Geschwindigkeit war rechnerabhängig. Web Audio spielt die Notenfolgen mit Rechteckwellen, emuliert aber keine bestimmte PC-Lautsprecher-Hardware. Classic ist ein JavaScript-Port, kein DOS-Emulator.
 - Die umgebende Moduswahl und das zusätzliche zugängliche HTML-Eingabefeld sind Browser-Bedienung. Bildschirmtexte bleiben im Originalenglisch. Kein CGA-Fallback, da Browser den primären EGA-Modus darstellen können. Classic speichert nur die Match-Einstellungen; Neuladen führt zur Moduswahl zurück.
+
+
+## Audiovalidierung (12.09.2026)
+
+Die ursprüngliche Portierung verwendete eine falsche Oktavzuordnung: `O0 C` wurde mit 16,35 statt 32,703 Hz gespielt. QBasic legt das mittlere C in `O3` (261,626 Hz), `N1` entspricht `O0 C`. Quellen: [QBasic PLAY-Dokumentation](https://qbasic.com/documentation/PLAY.html) und [QB64 PLAY-Dokumentation](https://qb64.com/wiki/PLAY.html) für Notendauern, Artikulation und Zustandsfortschreibung. Die unveränderten PLAY-Strings werden zusätzlich direkt gegen die lokale Microsoft-Quelldatei geprüft.
+
+- Rechtecksignal mit konstantem Pegel und originaler MN-Artikulation (7/8 Ton, 1/8 Pause), keine synthetischen Bass-Sweeps. Gain 0,28 statt 0,035, also +18,06 dB vor der Audioausgabe. Die tatsächliche Lautheit hängt weiter von Browser, Lautsprecher und Systemlautstärke ab.
+- Titel setzt T160, das Intro wechselt zunächst zu T120 und endet wieder bei T160. Wurf: 4 Noten in 0,1875 s; Gebäudetreffer/Tanzmotiv: 7 Noten in 0,328125 s; Gorillatreffer: 0,65625 s. Tonhöhe, Pausen, Längen und geerbtes Tempo sind separat getestet.
+- Intro: alle 144 Noten/Pausen aus vier Phrasen und acht Schlussmotiven. Die Animation berücksichtigt das Blockieren der BASIC-Ausführung durch den 32-Noten-Puffer von MB. Gesamtdauer einschließlich anfänglicher Sekunde: ca. 15,403 s. Bewusste Browser-Anpassung: die letzten gepufferten Noten enden vor Freigabe der Wurfeingabe. Überspringen verwirft sie; nach Stummschaltung oder Pause wird beim aktuellen Intro-Zeitpunkt fortgesetzt.
+- `tests/classic-audio.html` rendert mit einem echten `OfflineAudioContext`: Frequenzmessung aus Nulldurchgängen, RMS-Pegel, stille MN-Pause, alle Effekte, vollständiges Intro sowie Stummschaltung und Fortsetzen innerhalb einer Pause. Buttons erlauben das direkte Anhören aller Originalfolgen.
+- Keine Behauptung einer hardwareidentischen Aufnahme: PC-Lautsprecher-Resonanzen, PIT-Frequenzrundung und die DOS-Timerauflösung werden nicht emuliert. Gegen eine echte DOS-Audioaufnahme wurde nicht verglichen. Der Nachweis betrifft Originalpartitur, QBasic-Tonhöhen/-Längen und das im Browser gerenderte Signal.
+
+Validierungsergebnis im Codex-Browser (WebKit): 261,640 Hz für O3 C, RMS 0,2367, Pausen-RMS 0,00000000; alle Audiofälle bestanden. `npm test`: 75/75 bestanden, `npm run build` erfolgreich. Browser: Pixelvergleich 0/224.000 Abweichungen; 320/390/768 px ohne Überlauf; Classic-Intro, Punkt-Eingabe, Ein-Runden-Endstand 0:1, GAME-OVER-Button und Gravitationswechsel 100 → 9,8 erfolgreich; keine Konsolenfehler beim Spieltest.

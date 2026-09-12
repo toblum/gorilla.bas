@@ -200,7 +200,7 @@ footer{font-size:13px;letter-spacing:0;color:#2f3532}
 @media(prefers-reduced-motion:reduce){.replay-panel{animation:none}}
 
 /* Classic preserves SCREEN 9's 640 × 350 raster and removes enhanced-mode UI. */
-.mode-select{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(min-width:851px){.mode-select{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .mode-select b{flex-wrap:wrap}
 .mode-classic .scoreboard,.mode-classic .weather,.mode-classic .control-deck,.mode-classic .console-bottom,.mode-classic .instructions{display:none}
 .mode-classic .arena{background:#0000aa}

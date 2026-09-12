@@ -130,13 +130,13 @@
       if(this.phase!=='aiming')return false;
       if(!/^\d*\.?\d*$/.test(value)||Number(value)>360) { this.input='';this.prompt();return false; }
       if(this.inputStage==='angle') {this.angle=value;this.inputStage='velocity';this.input='';this.prompt();return true;}
-      return this.fire(Number(this.angle),Number(value));
+      return this.fire(Number(this.angle)||0,Number(value)||0);
     }
     fire(angle,velocity) {
       if(this.phase!=='aiming'||!Number.isFinite(angle)||!Number.isFinite(velocity)||angle<0||angle>360||velocity<0||velocity>360)return false;
       const s=this.screen,g=this.gorillas[this.turn],a=(this.turn===1?180-angle:angle)*PI/180;
       for(let row=1;row<=4;row++){s.text(row,1,' '.repeat(30));s.text(row,50,' '.repeat(30));}
-      this.sunHit=false;this.shot={sx:g.x+(this.turn===1?25:0),sy:g.y-7,vx:Math.cos(a)*cint(velocity),vy:Math.sin(a)*cint(velocity),t:0,point:velocity<2?1:0,inSun:false,erase:false};
+      this.sunHit=false;this.shot={sx:g.x+(this.turn===1?25:0),sy:g.y-7,vx:Math.cos(a)*cint(velocity),vy:Math.sin(a)*cint(velocity),t:0,point:cint(velocity)<2?1:0,inSun:false,erase:false};
       s.put(g.x,g.y,sprites[this.turn===0?1:0]);this.phase='throwing';this.age=0;this.accumulator=0;this.events.push('throw');return true;
     }
     stepShot() {

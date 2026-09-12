@@ -50,6 +50,7 @@
     $('setting-gravity').min = original ? '0.000001' : '0.5';
     $('setting-gravity').max = original ? '' : '30';
     $('setting-gravity').step = original ? 'any' : '0.1';
+    if (!original && !$('setting-gravity').checkValidity()) $('setting-gravity').value = 9.8;
     $('settings-note').textContent = original ? 'Originalregeln: feste Rundenzahl, Namen bis 10 Zeichen, beliebige positive Gravitation. Winkel und Stärke werden nacheinander mit Enter bestätigt.' : 'Ein Treffer gewinnt die Runde. Gravitation: Erde 9,8 · Mond 1,6. Sonnenkontakt lädt die Banane auf: 20 % mehr Explosionsradius. Ein neues Match beginnt bei 0 : 0.';
     $('replay-option').hidden = !$('mode-3d').checked;
     $('mode-description').textContent = original ? 'Classic: QBasic Gorillas von 1990. Originale EGA-Pixel, ursprüngliche Spielregeln und PC-Lautsprecher-Melodien.' : $('mode-3d').checked ? rendererError || 'Winkel, Richtung, Stärke: Werft durch eine räumliche Stadt. Kamera drehen, Straßen erkunden, Dächer treffen.' : 'Das Originalgefühl: Winkel und Stärke bestimmen euren Wurf.';
