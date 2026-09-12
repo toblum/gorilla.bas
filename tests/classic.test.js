@@ -17,6 +17,18 @@ function screenshot() {
   return rgba;
 }
 test('Classic: entire 640×350 reference screenshot matches all 224,000 pixels',()=>{assert.deepEqual(fixture().screen.rgba(),screenshot());});
+test('Classic: EGA palette slot 4 is black while slot 6 remains red',()=>{
+ const s=new Screen(2,1);s.pset(0,0,4);s.pset(1,0,6);assert.deepEqual([...s.rgba()],[0,0,0,255,170,0,0,255]);
+});
+test('Classic: Unicode names select CP437 glyphs and normalize to ten display cells',()=>{
+ const font=require('../classic-font.js');
+ for(const [char,slot] of [['Ä',142],['ö',148],['Ü',154],['ß',225],['é',130],['─',196],['A',65],['😀',63],['A\u0308',142]]){
+  const s=new Screen(8,14);s.text(1,1,char,9,0);
+  for(let y=0;y<14;y++)for(let x=0;x<8;x++)assert.equal(s.point(x,y),font[slot*14+y]&(128>>x)?9:0,`${char} at ${x},${y}`);
+ }
+ const g=fixture({names:['A\u0308nne😀123456789','Jörg']});assert.deepEqual(g.options.names,['Änne?12345','Jörg']);
+ const centered=new Screen(),expected=new Screen();centered.center(2,'A\u0308😀');expected.text(2,38,'Ä?');assert.deepEqual(centered.pixels,expected.pixels);
+});
 test('Classic: CINT is nearest-even; angle keeps decimals and velocity becomes INTEGER',()=>{
   assert.deepEqual([.5,1.5,2.5,-.5,-1.5].map(cint),[0,2,2,0,-2]);const g=fixture();assert.ok(g.enter('45.5'));assert.equal(g.inputStage,'velocity');assert.ok(g.enter('60.5'));assert.ok(Math.abs(Math.hypot(g.shot.vx,g.shot.vy)-60)<1e-10);
 });

@@ -7,8 +7,14 @@
   const W = 640, H = 350, PI = Math.PI, ASPECT = 35 / 48;
   const font = typeof module !== 'undefined' && module.exports ? require('./classic-font.js') : root.ClassicFont;
   // EGA register values after SetScreen (not VGA's default 16-color palette).
-  const registers = [1, 46, 44, 54, 4, 7, 4, 3, 56, 63, 58, 59, 60, 61, 62, 63];
+  const registers = [1, 46, 44, 54, 0, 7, 4, 3, 56, 63, 58, 59, 60, 61, 62, 63];
   const palette = registers.map(n => [((n >> 2 & 1) * 170 + (n >> 5 & 1) * 85), ((n >> 1 & 1) * 170 + (n >> 4 & 1) * 85), ((n & 1) * 170 + (n >> 3 & 1) * 85)]);
+  // Unicode input must select the corresponding IBM CP437 bitmap slot.
+  const cp437 = new Map(Array.from('☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼', (c,i) => [c,i+1]));
+  for(let i=32;i<127;i++)cp437.set(String.fromCharCode(i),i);
+  cp437.set('⌂',127);
+  Array.from('ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■\u00a0').forEach((c,i)=>cp437.set(c,i+128));
+  function classicText(text) { return Array.from(String(text).normalize('NFC'),c=>cp437.has(c)?c:'?').join(''); }
   // QBasic CINT uses nearest-even rounding, including for implicit DEFINT assignments.
   function cint(n) { const f = Math.floor(n), r = n - f; return r === .5 ? f + (f & 1) : Math.round(n); }
   class Screen {
@@ -60,11 +66,11 @@
     get(x, y, width, height) { const s = new Screen(width,height); for (let b=0;b<height;b++) for(let a=0;a<width;a++) s.pset(a,b,this.point(x+a,y+b)); return s; }
     put(x,y,s,xor = false) { x=cint(x);y=cint(y); for(let b=0;b<s.height;b++) for(let a=0;a<s.width;a++) this.pset(x+a,y+b, xor ? this.point(x+a,y+b)^s.point(a,b) : s.point(a,b)); }
     text(row, col, text, color = 9, background = 0) {
-      for (const char of String(text)) { let c = char.charCodeAt(0); if(c > 255) c=63;
+      for (const char of classicText(text)) { const c = cp437.get(char);
         for(let y=0;y<14;y++) for(let x=0;x<8;x++) this.pset((col-1)*8+x,(row-1)*14+y, font[c*14+y] & (128>>x) ? color : background); col++;
       }
     }
-    center(row,text,color = 9) { this.text(row,cint(40-(text.length/2+.5)),text,color); }
+    center(row,text,color = 9) { text=classicText(text);this.text(row,cint(40-(text.length/2+.5)),text,color); }
     rgba() { const out = new Uint8ClampedArray(this.pixels.length*4); for(let i=0;i<this.pixels.length;i++) { out.set(palette[this.pixels[i]],i*4); out[i*4+3]=255; } return out; }
   }
   function drawGorilla(s,x,y,arms) {
@@ -99,7 +105,7 @@
   class ClassicGame {
     constructor(options={},random=Math.random) { this.random=random;this.reset(options); }
     reset(options={}) {
-      this.options={names:(options.names||['Player 1','Player 2']).map((n,i)=>(String(n).trim()||`Player ${i+1}`).slice(0,10)),target:Math.max(1,Math.min(99,Math.trunc(options.target)||3)),gravity:Number(options.gravity)>0?Number(options.gravity):9.8};
+      this.options={names:(options.names||['Player 1','Player 2']).map((n,i)=>classicText(String(n).trim()||`Player ${i+1}`).slice(0,10)),target:Math.max(1,Math.min(99,Math.trunc(options.target)||3)),gravity:Number(options.gravity)>0?Number(options.gravity):9.8};
       this.scores=[0,0];this.turn=0;this.round=0;this.screen=new Screen();this.events=[];this.beginRound();
     }
     ran(n) { return Math.floor(this.random()*n)+1; }
