@@ -2,8 +2,10 @@
 <style>body{font:16px/1.5 system-ui;max-width:950px;margin:30px;background:#f3eedf;color:#202b2c}button{padding:12px;margin:4px}li{margin:8px}audio{display:block}</style>
 <h1>Classic · Originalnoten und Web-Audio-Signal</h1>
 <p>Die Prüfungen rendern den echten Browser-Oszillator. O3 C muss 261,626 Hz ergeben; MN schaltet nach 7/8 der Notendauer ab. Die Hörproben verwenden die unveränderten PLAY-Folgen aus GORILLA.BAS mit korrigierter Oktave und höherem Pegel. Keine Aufnahme eines historischen PC-Lautsprechers.</p>
+<p id="browser"></p>
 <button id="run">Signal prüfen</button><button id="stop">Ton stoppen</button><div id="listen"></div><ul id="results"></ul>
 <script src="../sound.js"></script><script src="../classic-sound.js"></script><script>
+document.querySelector('#browser').textContent='Testbrowser: '+navigator.userAgent;
 const live=new GorillaSound(),speaker=new ClassicSound.Speaker(live);
 for(const [name,mml] of Object.entries(ClassicSound.melodies)){
  const button=document.createElement('button');button.textContent=name+' anhören';button.onclick=()=>{live.stop();speaker.reset();const score=new ClassicSound.Score();score.compile(ClassicSound.melodies.title);speaker.play(score.compile(mml));};document.querySelector('#listen').append(button);

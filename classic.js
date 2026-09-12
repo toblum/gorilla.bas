@@ -136,11 +136,15 @@
       if(this.phase!=='aiming'||!Number.isFinite(angle)||!Number.isFinite(velocity)||angle<0||angle>360||velocity<0||velocity>360)return false;
       const s=this.screen,g=this.gorillas[this.turn],a=(this.turn===1?180-angle:angle)*PI/180;
       for(let row=1;row<=4;row++){s.text(row,1,' '.repeat(30));s.text(row,50,' '.repeat(30));}
-      this.sunHit=false;this.shot={sx:g.x+(this.turn===1?25:0),sy:g.y-7,vx:Math.cos(a)*cint(velocity),vy:Math.sin(a)*cint(velocity),t:0,point:cint(velocity)<2?1:0,inSun:false,erase:false};
+      const integerVelocity=cint(velocity);
+      this.sunHit=false;this.shot={sx:g.x+(this.turn===1?25:0),sy:g.y-7,vx:Math.cos(a)*integerVelocity,vy:Math.sin(a)*integerVelocity,t:0,point:0,lowVelocity:integerVelocity<2,inSun:false,erase:false};
       s.put(g.x,g.y,sprites[this.turn===0?1:0]);this.phase='throwing';this.age=0;this.accumulator=0;this.events.push('throw');return true;
     }
     stepShot() {
       const q=this.shot,s=this.screen;if(q.erase){s.put(q.x,q.y,bananas[q.rot],true);q.erase=false;}
+      if(q.lowVelocity){
+        q.x=this.gorillas[this.turn].x;q.y=this.gorillas[this.turn].y;this.winner=1-this.turn;this.impact={x:q.x,y:q.y,hit:this.turn};this.phase='gorillaExplosion';this.events.push('gorilla');this.age=0;this.effectStep=0;return;
+      }
       const x=q.sx+q.vx*q.t+.5*(this.wind/5)*q.t*q.t,y=q.sy-q.vy*q.t+.5*this.options.gravity*q.t*q.t;
       const onScreen=x<630&&x>3&&y<347;let impact=false;
       if(onScreen&&y>0){

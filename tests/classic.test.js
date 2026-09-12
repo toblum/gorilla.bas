@@ -59,5 +59,8 @@ test('Classic: dot-only angle and velocity behave like QBasic VAL zero',()=>{
  const g=fixture();assert.ok(g.enter('.'));assert.ok(g.enter('.'));assert.equal(g.phase,'throwing');assert.equal(g.shot.vx,0);assert.equal(g.shot.vy,0);until(g,()=>g.phase==='celebrating');assert.equal(g.winner,1);
 });
 test('Classic: self-hit shortcut uses rounded INTEGER velocity at the 1.5 boundary',()=>{
- for(const [velocity,point] of [[1.49,1],[1.5,0],[1.99,0],[2,0]]){const g=fixture();g.fire(45,velocity);assert.equal(g.shot.point,point);}
+ for(const [velocity,lowVelocity] of [[1.49,true],[1.5,false],[1.99,false],[2,false]]){const g=fixture();g.fire(45,velocity);assert.equal(g.shot.lowVelocity,lowVelocity);}
+});
+test('Classic: rounded low-velocity shots immediately hit the throwing gorilla',()=>{
+ for(const velocity of [0,1,1.49]){const g=fixture();const player=g.turn;g.fire(45,velocity);until(g,()=>g.phase==='celebrating');assert.equal(g.winner,1-player);}
 });
