@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="de">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Classic · Session-Regression</title>
+<style>body{font:16px/1.5 system-ui;margin:24px;background:#f3eedf;color:#202b2c}iframe{width:100%;height:800px;border:1px solid #777}#result{font-weight:bold}</style>
+<h1>Classic · Neuladen und Neustart</h1>
+<p>Startet eine Classic-Partie im eingebetteten Spiel, lädt sie neu und prüft die erhaltenen Einstellungen sowie die Rückkehr zur Moduswahl.</p>
+<p id="result">Prüfung läuft …</p><ul id="checks"></ul><div id="game-frame"></div>
+<script>
+(async()=>{
+  const frame=document.createElement('iframe');frame.title='Classic Session-Test';
+  const check=(condition,label)=>{
+    const item=document.createElement('li');item.textContent=`${condition?'PASS':'FAIL'} · ${label}`;document.querySelector('#checks').append(item);
+    if(!condition)throw new Error(label);
+  };
+  const load=action=>new Promise((resolve,reject)=>{
+    const timeout=setTimeout(()=>{frame.removeEventListener('load',done);reject(new Error('Laden des Spiels dauert zu lange'));},10000);
+    function done(){clearTimeout(timeout);resolve();}
+    frame.addEventListener('load',done,{once:true});action();
+  });
+  await load(()=>{frame.src='../index.html';document.querySelector('#game-frame').append(frame);});
+  let d=frame.contentDocument;
+  if(!d.querySelector('#settings').open)d.querySelector('#settings-open').click();
+  d.querySelector('#mode-classic').click();
+  d.querySelector('#setting-name-0').value='Änne';d.querySelector('#setting-name-1').value='Jörg';
+  d.querySelector('#setting-target').value='7';d.querySelector('#setting-gravity').value='0.125';
+  d.querySelector('#settings-form').requestSubmit();
+  check(!d.querySelector('#settings').open,'Classic-Match startet mit eigener Gravitation');
+  d.querySelector('#classic-submit').click();d.querySelector('#classic-submit').click();
+  check(!d.querySelector('#classic-input').disabled,'Classic-Eingabe vor dem Neuladen aktiv');
+  const saved=JSON.parse(frame.contentWindow.sessionStorage.getItem('gorillas-session-v1'));
+  check(saved.mode==='classic'&&saved.screen==='game'&&saved.classicOptions.target===7,'Laufendes Classic-Match wurde gespeichert');
+  await load(()=>frame.contentWindow.location.reload());d=frame.contentDocument;
+  check(d.querySelector('#settings').open&&d.querySelector('#mode-classic').checked,'Neuladen öffnet die Moduswahl mit ausgewähltem Classic');
+  check(d.querySelector('#setting-name-0').value==='Änne'&&d.querySelector('#setting-name-1').value==='Jörg','Beide Namen bleiben erhalten');
+  check(d.querySelector('#setting-target').value==='7'&&Number(d.querySelector('#setting-gravity').value)===0.125,'Rundenzahl und Classic-Gravitation bleiben erhalten');
+  const cancel=new frame.contentWindow.Event('cancel',{cancelable:true});d.querySelector('#settings').dispatchEvent(cancel);
+  check(d.querySelector('#settings-close').hidden&&cancel.defaultPrevented,'Moduswahl kann vor einem Neustart nicht geschlossen werden');
+  d.querySelector('#settings-form').requestSubmit();
+  check(!d.querySelector('#settings').open&&d.querySelector('#classic-label').textContent==='QBasic Gorillas · 1990','Neustart initialisiert den Classic-Titelbildschirm');
+  d.querySelector('#classic-submit').click();d.querySelector('#classic-submit').click();
+  check(!d.querySelector('#classic-input').disabled&&d.querySelector('#classic-label').textContent==='Angle (Winkel)','Neustart erlaubt wieder die Winkeleingabe');
+  document.querySelector('#result').textContent='PASS · Classic-Session bleibt nach Neuladen und Neustart bedienbar';
+})().catch(error=>{document.querySelector('#result').textContent='FAIL · '+error.message;console.error(error);});
+</script>
+</html>

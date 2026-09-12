@@ -23,7 +23,7 @@
       if(this.stage==='title'){this.stage='choice';this.age=0;}
       else if(this.stage==='choice'){this.stage=key.toLowerCase()==='v'?'intro':'play';this.age=0;this.introStep=-1;this.sound.stop();this.speaker.reset();if(this.stage==='intro'){this.intro=this.score.intro();this.speaker.play(this.intro);this.resumeIntro=false;}}
       else if(this.stage==='intro'){this.stage='play';this.sound.stop();this.speaker.reset();}
-      else if(this.game.phase==='gameOver'){this.onEnd();return;}
+      else if(this.game.phase==='gameOver'){this.sound.stop();this.speaker.reset();this.onEnd();return;}
       this.sync(true);
     }
     sync(focus=false){

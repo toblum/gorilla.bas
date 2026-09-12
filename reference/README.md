@@ -24,6 +24,8 @@ Der direkte Vergleich wird reproduzierbar in `tests/classic.html` aus der unabh�
 
 ## Genauigkeit und Grenzen
 
+`tests/classic-session.html` prüft den Browser-Sessionpfad mit echtem Neuladen: gespeicherte Namen, Rundenzahl und Classic-Gravitation bleiben erhalten; die Moduswahl erscheint vor einer neuen Partie; Titelbildschirm und Winkeleingabe funktionieren nach dem Neustart. Alle neun Browser-Prüfungen bestanden am 13.09.2026. Der UI-Test prüft zusätzlich, dass beim Verlassen von GAME OVER alle Stimmen gestoppt und die Sound-Warteschlange vor dem Menü-Callback zurückgesetzt werden.
+
 - Feste Gesamtzahl von Runden; auch Unentschieden möglich. Selbsttreffer punkten für den Gegner. Werfer wechseln auch über Rundengrenzen hinweg.
 - EGA-Palettenregister und Original-Bananen-DATA; PUT/PSET und XOR entfernen tatsächlich Bildpixel. Dieselben Pixel werden durch POINT auf Kollision geprüft.
 - EGA-Palettenplatz 4 bleibt durch die ursprüngliche Initialisierung schwarz; Platz 6 ist rot. Unicode-Namen werden auf die CP437-Schrift abgebildet (einschließlich Umlauten), kombinierte Zeichen normalisiert und nicht darstellbare Zeichen durch `?` ersetzt. Die Begrenzung auf zehn Zeichen erfolgt danach.

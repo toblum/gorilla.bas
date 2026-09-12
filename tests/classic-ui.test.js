@@ -11,9 +11,11 @@ function fixture(){
  return {ui,element,sound,ended:()=>ended};
 }
 test('Classic UI: a completed match returns through the visible submit button',()=>{
- const {ui,element,ended}=fixture();ui.advance();ui.advance();
+ const {ui,element,ended,sound}=fixture();ui.advance();ui.advance();
  ui.game.enter('.');ui.game.enter('.');for(let i=0;i<500&&ui.game.phase!=='gameOver';i++)ui.update(.02);
  assert.equal(ui.game.phase,'gameOver');assert.equal(element('classic-submit').textContent,'Zum Startbildschirm');
+ const stops=sound.stops,onEnd=ui.onEnd;ui.speaker.end=100;
+ ui.onEnd=()=>{assert.equal(sound.stops,stops+1);assert.equal(ui.speaker.end,0);onEnd();};
  element('classic-form').handlers.submit({preventDefault(){}});assert.equal(ended(),1);
 });
 test('Classic UI: muted intro keeps all poses and finishes before accepting shots',()=>{
