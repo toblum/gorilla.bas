@@ -14,6 +14,8 @@ dialog#settings[open] { grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr
 #settings-form { padding: 32px; min-width: 0; }
 #settings-form .dialog-top { align-items: flex-start; }
 #settings-form h2 { font-size: clamp(24px, 2.5vw, 32px); margin: 0; }
+/* Initial dialog focus belongs to this static heading, outside the Tab order. */
+#settings-title:focus { outline: none; }
 #settings .close-button { min-width: 44px; min-height: 44px; margin: -8px -8px 0 0; flex-shrink: 0; }
 #settings .mode-select { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 24px; }
 #settings .mode-select legend { font-size: 12px; letter-spacing: 0; }
