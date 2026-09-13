@@ -8,6 +8,7 @@
   <title>GORILLAS — Das Duell über den Dächern</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css?v=1.4.0">
+  <link rel="stylesheet" href="start-dialog.css?v=1.4.0">
   <script src="engine.js?v=1.4.0" defer></script>
   <script src="engine3d.js?v=1.4.0" defer></script>
   <script src="view3d.js?v=1.4.0" defer></script>
@@ -20,6 +21,7 @@
   <script src="classic.js?v=1.4.0" defer></script>
   <script src="classic-sound.js?v=1.4.0" defer></script>
   <script src="classic-ui.js?v=1.4.0" defer></script>
+  <script src="welcome.js?v=1.4.0" defer></script>
   <script src="game.js?v=1.4.0" defer></script>
 </head>
 <body>
@@ -79,14 +81,13 @@
     <footer><span>EINE HOMMAGE AN QBASIC GORILLAS · 1990</span><a href="https://github.com/pmachapman/basic-samples/blob/master/QBASIC/GORILLA.BAS" target="_blank" rel="noopener noreferrer">Das Original <span aria-hidden="true">↗</span></a><span id="build-version">VERSION 1.4.0 · lokal</span></footer>
   </main>
   <dialog id="settings" aria-labelledby="settings-title">
-    <div class="welcome-scene"><span class="welcome-kicker">GORILLAS / EST. 1990</span><h2>Die Stadt<br>gehört euch.</h2><canvas id="welcome-art" width="400" height="230" aria-hidden="true"></canvas><span class="welcome-caption">ZWEI GORILLAS. EIN DUELL ÜBER DEN DÄCHERN.</span></div>
+    <div class="welcome-scene"><span class="welcome-kicker">GORILLAS / EST. 1990</span><h2 id="welcome-title">Eine Skyline.<br>Euer Duell.</h2><canvas id="welcome-art" width="400" height="230" aria-hidden="true"></canvas><span class="welcome-caption" id="welcome-caption">2D · WINKEL + STÄRKE</span></div>
     <form id="settings-form">
-      <div class="dialog-top"><span class="eyebrow">FRISCHE SKYLINE. NEUE CHANCE.</span><button id="settings-close" type="button" class="close-button" aria-label="Einstellungen schließen">×</button></div>
-      <h2 id="settings-title">Bereit zum Abwurf?</h2><p class="dialog-description">Schnappt euch die Tastatur. Wählt eure Namen und legt fest, wie euer Duell aussehen soll.</p>
-      <fieldset class="mode-select"><legend>WELCHEN MODUS SPIELT IHR?</legend>
-        <label><input type="radio" name="mode" id="mode-classic" value="classic"><span><b>Classic <small>QBASIC 1990</small></b><em>Die ursprünglichen Regeln und Pixel.</em></span></label>
-        <label><input type="radio" name="mode" id="mode-2d" value="2d" checked><span><b>2D <small>NEU INTERPRETIERT</small></b><em>Eine Skyline. Euer Duell.</em></span></label>
-        <label><input type="radio" name="mode" id="mode-3d" value="3d"><span><b>3D <small>DIE GANZE STADT</small></b><em>Mehr Tiefe. Neue Flugbahnen.</em></span></label>
+      <div class="dialog-top"><h2 id="settings-title">Bereit zum Abwurf?</h2><button id="settings-close" type="button" class="close-button" aria-label="Einstellungen schließen">×</button></div>
+      <fieldset class="mode-select"><legend>Spielmodus</legend>
+        <label><input type="radio" name="mode" id="mode-classic" value="classic"><span><b>Classic</b><em>QBasic 1990</em></span></label>
+        <label><input type="radio" name="mode" id="mode-2d" value="2d" checked><span><b>2D</b><em>Neu interpretiert</em></span></label>
+        <label><input type="radio" name="mode" id="mode-3d" value="3d"><span><b>3D</b><em>Die ganze Stadt</em></span></label>
       </fieldset>
       <p class="mode-description" id="mode-description" role="status">Das Originalgefühl: Winkel und Stärke bestimmen euren Wurf.</p>
       <div class="settings-grid">
@@ -97,7 +98,7 @@
       </div>
       <label class="aim-option"><input id="setting-aim-assist" type="checkbox" aria-describedby="aim-description"><span>Zielhilfe <small id="aim-description">Ein dezenter Pfeil zeigt die gewählte Wurfrichtung und Stärke.</small></span></label>
       <label class="aim-option replay-option" id="replay-option" hidden><input id="setting-replay" type="checkbox" checked aria-describedby="replay-description"><span>Einschlag-Replay <small id="replay-description">Flugende und Explosion noch einmal groß in Zeitlupe sehen. Jederzeit überspringbar.</small></span></label>
-      <p class="settings-note" id="settings-note">Ein Treffer gewinnt die Runde. Gravitation: Erde 9,8 · Mond 1,6. Sonnenkontakt lädt die Banane auf: 20 % mehr Explosionsradius. Ein neues Match beginnt bei 0 : 0.</p>
+      <details class="settings-help"><summary>Spielregeln & Tipps</summary><p class="settings-note" id="settings-note">Ein Treffer gewinnt die Runde. Gravitation: Erde 9,8 · Mond 1,6. Sonnenkontakt lädt die Banane auf: 20 % mehr Explosionsradius. Ein neues Match beginnt bei 0 : 0.</p></details>
       <button class="primary-button welcome-start" type="submit">Auf die Dächer! <span aria-hidden="true">↗</span></button>
     </form>
   </dialog>
