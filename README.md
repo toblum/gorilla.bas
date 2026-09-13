@@ -44,7 +44,7 @@ Die Startdatei ist `index.html`. Auch ein Unterordner funktioniert, da alle Asse
 
 Die öffentliche Adresse ist [gorillas.sparebytes.dev](https://gorillas.sparebytes.dev). Das Coolify-Projekt und die Anwendung heißen `gorillas.bas`; das GitHub-Repository heißt `toblum/gorilla.bas`.
 
-Jeder Push auf `main` löst über die vorhandene GitHub-App einen Build in Coolify aus. Nixpacks führt `npm test && npm run build` aus; anschließend liefert Nginx ausschließlich das Verzeichnis `/dist` über HTTPS aus. Pull-Request-Deployments sind deaktiviert.
+Jeder Push auf `main` löst über die vorhandene GitHub-App einen Build in Coolify aus. Nixpacks führt `npm test && npm run build` aus; anschließend liefert Nginx ausschließlich das Verzeichnis `/dist` über HTTPS aus. Für Pull Requests von Repository-Inhabern, Mitgliedern und Collaborators erstellt Coolify automatisch eine isolierte Vorschau unter `https://<PR-NUMMER>.gorillas.sparebytes.dev`; Fork-PRs fremder Personen werden nicht automatisch ausgeführt.
 
 Der Build benötigt Node.js 22 oder neuer und kopiert nur die sechzehn Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
 
