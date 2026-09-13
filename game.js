@@ -15,6 +15,7 @@
   const palette = [ ['#667b78', '#81918a'], ['#b78377', '#c69583'], ['#797986', '#94909a'], ['#445e64', '#60787c'] ];
   const colors = ['#f3854e', '#b9d4b6'];
   let drawnRound = 0, drawnTerrain = -1, previousPhase = '', previousTime = 0, uiDirty = true, ambientTimer = 3.5;
+  const welcome = new window.GorillaWelcome($('welcome-art'));
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const sessionKey = 'gorillas-session-v1';
   let started = false, savedInputs = null, savedCamera = null, saveTimer = 0, finale = null, savedFinaleAge = 0, sceneryTime = 0;
@@ -44,6 +45,11 @@
   }
   function updateModeDescription() {
     const original = $('mode-classic').checked;
+    const previewMode = original ? 'classic' : $('mode-3d').checked ? '3d' : '2d';
+    welcome.setMode(previewMode);
+    $('settings').dataset.preview = previewMode;
+    $('welcome-title').textContent = original ? 'Zurück auf Anfang.' : previewMode === '3d' ? 'Die ganze Stadt.' : 'Eine Skyline. Euer Duell.';
+    $('welcome-caption').textContent = original ? 'CLASSIC · EGA-PIXEL / 1990' : previewMode === '3d' ? '3D · WINKEL + RICHTUNG + STÄRKE' : '2D · WINKEL + STÄRKE';
     $('setting-aim-assist').closest('label').hidden = original;
     $('setting-target-label').textContent = original ? 'Runden insgesamt' : 'Gewonnene Runden zum Sieg';
     for (const id of ['setting-name-0', 'setting-name-1']) $(id).maxLength = original ? 10 : 18;
@@ -221,26 +227,7 @@
       drawGorilla(portrait, 24, 9, game.winner, pose); portrait.restore();
     }
     if ($('settings').open) {
-      const preview = $('welcome-art').getContext('2d');
-      preview.clearRect(0, 0, 400, 230);
-      preview.fillStyle = '#ebae90'; preview.fillRect(0, 0, 400, 230);
-      preview.fillStyle = '#ffdf96'; preview.beginPath(); preview.arc(205, 72, 34, 0, Math.PI * 2); preview.fill();
-      for (let i = 0; i < 9; i++) {
-        const h = 35 + (i * 37) % 65;
-        preview.fillStyle = i % 2 ? '#677c79' : '#405b62'; preview.fillRect(i * 49 - 12, 230 - h, 45, h);
-        preview.fillStyle = '#f3d3a0';
-        for (let x = 0; x < 3; x++) for (let y = 0; y < h - 15; y += 14) preview.fillRect(i * 49 - 5 + x * 11, 240 - h + y, 3, 5);
-      }
-      preview.fillStyle = '#283e46'; preview.fillRect(28, 169, 96, 61); preview.fillRect(276, 169, 96, 61);
-      preview.save(); preview.scale(2, 2);
-      const pose = reducedMotion ? 'both' : ['left', 'both', 'right', 'both'][Math.floor(time / 350) % 4];
-      drawGorilla(preview, 38, 50, 0, pose); drawGorilla(preview, 162, 50, 1, pose); preview.restore();
-      const flight = sceneryTime / 3400, turn = Math.floor(flight), t = reducedMotion ? .5 : flight % 1;
-      const direction = turn % 2 ? -1 : 1;
-      const progress = direction === 1 ? t : 1 - t;
-      preview.save(); preview.globalAlpha = reducedMotion ? 1 : Math.min(1, t * 12, (1 - t) * 12);
-      drawBanana(preview, 80 + 240 * progress, 91 - Math.sin(t * Math.PI) * 64, reducedMotion ? -.3 : direction * (t * Math.PI * 2 - .6));
-      preview.restore();
+      welcome.draw(time, reducedMotion);
     }
   }
   function syncUI(focus = false) {

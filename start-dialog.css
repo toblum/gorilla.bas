@@ -1,0 +1,69 @@
+/* Start dialog: keep the game and finale layouts independent. */
+dialog#settings {
+  width: min(1180px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  overscroll-behavior: contain;
+}
+dialog#settings[open] { grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); }
+#settings .welcome-scene { padding: 32px; justify-content: center; min-width: 0; }
+#settings .welcome-scene h2 { font-size: clamp(40px, 5vw, 64px); margin: 32px 0; }
+#settings .welcome-scene canvas { position: static; width: calc(100% + 64px); margin: 0 -32px 28px; opacity: 1; }
+#settings .welcome-caption { display: block; font-size: 11px; line-height: 1.6; }
+#settings[data-preview="classic"] .welcome-scene { background: #000066; }
+#settings[data-preview="3d"] .welcome-scene { background: #263a48; }
+#settings-form { padding: 32px; min-width: 0; }
+#settings-form .dialog-top { align-items: flex-start; }
+#settings-form h2 { font-size: clamp(24px, 2.5vw, 32px); margin: 0; }
+#settings .close-button { min-width: 44px; min-height: 44px; margin: -8px -8px 0 0; flex-shrink: 0; }
+#settings .mode-select { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 24px; }
+#settings .mode-select legend { font-size: 12px; letter-spacing: 0; }
+#settings .mode-select label > span { height: auto; min-height: 94px; padding: 16px 10px 12px 32px; }
+#settings .mode-select input:checked + span { padding: 15px 9px 11px 31px; }
+#settings .mode-select b { display: block; font-size: 26px; }
+#settings .mode-select em { font-size: 11px; line-height: 1.4; }
+#settings .mode-description { font-size: 12px; min-height: 3.2em; margin: 12px 0 0; }
+#settings-form .settings-grid { gap: 18px 16px; margin: 20px 0; }
+#settings .settings-grid label { font-size: 12px; line-height: 1.5; }
+#settings .settings-grid input { margin-top: 6px; min-height: 44px; }
+#settings .aim-option { margin: 12px 0; font-size: 13px; }
+#settings .aim-option small { font-size: 11px; }
+#settings .settings-help { margin: 18px 0 22px; font-size: 12px; }
+#settings .settings-help summary { cursor: pointer; padding: 8px 0; }
+#settings .settings-help summary:focus-visible { outline: 3px solid #c84621; outline-offset: 3px; }
+#settings .settings-note { font-size: 12px; margin: 8px 0; }
+#settings .welcome-start { min-height: 54px; font-size: 15px; }
+@keyframes welcome-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: no-preference) {
+  #settings[open] { animation: welcome-enter .28s ease-out; }
+  #settings .welcome-scene { transition: background .25s; }
+  #settings .mode-select label > span { transition: background .15s, border-color .15s, transform .15s; }
+  #settings .mode-select label:hover > span { transform: translateY(-2px); }
+}
+@media (max-width: 900px) {
+  dialog#settings[open] { grid-template-columns: 1fr; }
+  #settings .welcome-scene { display: grid; grid-template-columns: 1fr minmax(160px, 40%); padding: 20px 28px; gap: 8px 20px; }
+  #settings .welcome-kicker { font-size: 10px; }
+  #settings .welcome-scene h2 { font-size: 36px; margin: 4px 0; }
+  #settings .welcome-scene canvas { grid-column: 2; grid-row: 1 / 4; width: 100%; margin: 0; }
+  #settings .welcome-caption { font-size: 9px; }
+  #settings-form { padding: 24px 28px; }
+}
+@media (max-width: 480px) {
+  dialog#settings { width: calc(100% - 16px); max-height: calc(100dvh - 16px); }
+  #settings .welcome-scene { padding: 16px; grid-template-columns: 1fr 42%; gap: 6px 10px; }
+  #settings .welcome-scene h2 { font-size: 28px; }
+  #settings .welcome-kicker { font-size: 8px; letter-spacing: 1px; }
+  #settings .welcome-caption { grid-column: 1 / -1; }
+  #settings .welcome-scene canvas { grid-row: 1 / 3; }
+  #settings-form { padding: 22px 16px; }
+  #settings .mode-select { gap: 6px; }
+  #settings .mode-select input { left: 9px; top: 13px; }
+  #settings .mode-select label > span { padding: 36px 8px 12px; }
+  #settings .mode-select input:checked + span { padding: 35px 7px 11px; }
+  #settings .mode-select b { font-size: 23px; }
+  #settings .mode-select em { font-size: 10px; }
+  #settings .mode-description { min-height: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #settings *, #settings .primary-button { animation: none; transition: none; }
+}
