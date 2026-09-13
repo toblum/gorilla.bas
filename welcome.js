@@ -8,6 +8,10 @@
       this.lastFrame = '';
       this.classicCanvas = document.createElement('canvas');
       this.classicCanvas.width = 400; this.classicCanvas.height = 230;
+      // Reuse the original filled EGA sun, including its face and rays.
+      const sunScreen = new root.GorillasClassic.Screen();
+      root.GorillasClassic.drawSun(sunScreen);
+      this.classicSun = sunScreen.get(298, 7, 45, 37);
     }
     setMode(mode) { this.mode = mode; }
     draw(time, reducedMotion) {
@@ -75,8 +79,7 @@
         for (let x = 8; x < 44; x += 12)
           for (let y = top + 8; y < 220; y += 14) screen.box(i * 52 + x, y, i * 52 + x + 3, y + 5, 14);
       }
-      screen.circle(200, 40, 16, 3); screen.circle(195, 37, 1, 4); screen.circle(205, 37, 1, 4);
-      screen.line(195, 46, 205, 46, 4);
+      screen.put(178, 22, this.classicSun);
       const arms = [1, 3, 2, 3][Math.floor(tick / 4) % 4];
       drawGorilla(screen, 76, 144, arms); drawGorilla(screen, 337, 144, arms);
       screen.put(76 + 261 * progress, 112 - Math.sin(t * Math.PI) * 65, bananas[tick % bananas.length]);

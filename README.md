@@ -17,11 +17,13 @@ Dann [http://127.0.0.1:8080](http://127.0.0.1:8080) öffnen. Der lokale Server e
 
 ## Selbst hosten
 
-Diese sechzehn Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
+Diese achtzehn Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
 
 ```text
 index.html
 style.css
+start-dialog.css
+welcome.js
 engine.js
 engine3d.js
 view3d.js
@@ -46,7 +48,7 @@ Die öffentliche Adresse ist [gorillas.sparebytes.dev](https://gorillas.sparebyt
 
 Jeder Push auf `main` löst über die vorhandene GitHub-App einen Build in Coolify aus. Nixpacks führt `npm test && npm run build` aus; anschließend liefert Nginx ausschließlich das Verzeichnis `/dist` über HTTPS aus. Pull-Request-Deployments sind deaktiviert.
 
-Der Build benötigt Node.js 22 oder neuer und kopiert nur die sechzehn Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
+Der Build benötigt Node.js 22 oder neuer und kopiert nur die achtzehn Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
 
 ## Neu in Version 1.4: Classic
 
