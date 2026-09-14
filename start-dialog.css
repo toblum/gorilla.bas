@@ -19,6 +19,8 @@ dialog#settings[open] { grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr
 #settings .close-button { min-width: 44px; min-height: 44px; margin: -8px -8px 0 0; flex-shrink: 0; }
 #settings .mode-select { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 24px; }
 #settings .mode-select legend { font-size: 12px; letter-spacing: 0; }
+/* Keep the native radio above the card surface in every interaction state. */
+#settings .mode-select input { z-index: 1; }
 #settings .mode-select label > span { height: auto; min-height: 94px; padding: 16px 10px 12px 32px; }
 #settings .mode-select input:checked + span { padding: 15px 9px 11px 31px; }
 #settings .mode-select b { display: block; font-size: 26px; }
@@ -38,8 +40,11 @@ dialog#settings[open] { grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr
 @media (prefers-reduced-motion: no-preference) {
   #settings[open] { animation: welcome-enter .28s ease-out; }
   #settings .welcome-scene { transition: background .25s; }
-  #settings .mode-select label > span { transition: background .15s, border-color .15s, transform .15s; }
-  #settings .mode-select label:hover > span { transform: translateY(-2px); }
+  #settings .mode-select label > span { transition: background-color .18s ease-out, border-color .18s ease-out; }
+}
+@media (hover: hover) {
+  #settings .mode-select label:hover > input:not(:checked) + span { background: #f3eee0; border-color: #7b8578; }
+  #settings .mode-select label:hover > input:checked + span { background: #f7d7ac; }
 }
 @media (max-width: 900px) {
   dialog#settings[open] { grid-template-columns: 1fr; }
