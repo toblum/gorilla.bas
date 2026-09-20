@@ -40,6 +40,16 @@
     }
     orbit(yaw,pitch){this.transition=null;this.pose.yaw+=yaw;this.pose.pitch=clamp(this.pose.pitch+pitch,.22,1.35);this.remember();}
     zoom(factor){this.transition=null;this.pose.distance=clamp(this.pose.distance*factor,330,1500);this.remember();}
+    pan(right,forward) {
+      if(![right,forward].every(Number.isFinite))return;
+      this.transition=null;
+      const {yaw,target}=this.pose,c=Math.cos(yaw),s=Math.sin(yaw);
+      // Move across the ground in camera-relative directions, retaining roof height.
+      const anchor=this.anchor||[0,0,0];
+      target[0]=clamp(target[0]+right*c-forward*s,anchor[0]-2200,anchor[0]+2200);
+      target[2]=clamp(target[2]-right*s-forward*c,anchor[2]-2200,anchor[2]+2200);
+      this.remember();
+    }
     overview(){const pose={yaw:.42,pitch:.6,distance:1080,target:[0,55,30]};this.moveTo(pose);this.remember(pose);}
     behind(game){const pose=this.defaultPose(game);this.moveTo(pose);this.remember(pose);}
     snapshot(){this.remember(this.transition?.to||this.pose);return copy(this.views);}
@@ -81,14 +91,18 @@
         this.actors.push({kind,route,lengths,length:lengths.reduce((a,b)=>a+b,0),speed,offset,y,pose:[0,y,0],heading:0});
       };
       // Two separated circuits use the centres of real lanes, including the outer streets.
-      for(const [a,b] of [[0,2],[5,7]]) {
+      const circuits=[[0,2],columns.length>7?[5,7]:[3,5]];
+      for(const [a,b] of circuits) {
         const route=[[columns[a]+87,back+13],[columns[b]+79,back+13],[columns[b]+79,front-25],[columns[a]+87,front-25]];
-        add('car',route,13,.12);add(a===0?'taxi':'bus',route,13,.62);
+        for(let i=0;i<4;i++)add(i%2?(a===0?'taxi':'bus'):'car',route,13,.12+i*.25);
       }
       // Wrapping happens in the distance haze, beyond the playable city.
       add('bus',[[-1750,front-5],[1750,front-5]],16,.48,.5);
       add('taxi',[[1750,front-13],[-1750,front-13]],19,.57,.5);
       add('car',[[-1750,front-5],[1750,front-5]],16,.58,.5);
+      add('car',[[-1750,front-5],[1750,front-5]],16,.38,.5);
+      add('taxi',[[1750,front-13],[-1750,front-13]],19,.47,.5);
+      add('car',[[1750,front-13],[-1750,front-13]],19,.67,.5);
       add('sailboat',[[-1600,shore+185],[1600,shore+185]],5,.53,-2);
       add('boat',[[1600,shore+330],[-1600,shore+330]],8,.44,-2);
       for(let i=0;i<4;i++)add('walker',[[left+45,front+6],[right-45,front+6],[right-45,front+12],[left+45,front+12]],2.2,i/4,4);

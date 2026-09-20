@@ -11,8 +11,8 @@
   <link rel="stylesheet" href="start-dialog.css?v=1.4.0">
   <script src="engine.js?v=1.4.0" defer></script>
   <script src="engine3d.js?v=1.4.0" defer></script>
-  <script src="view3d.js?v=1.4.1" defer></script>
-  <script src="city3d.js?v=1.4.1" defer></script>
+  <script src="view3d.js?v=1.4.2" defer></script>
+  <script src="city3d.js?v=1.4.2" defer></script>
   <script src="sound.js?v=1.4.0" defer></script>
   <script src="visuals.js?v=1.4.0" defer></script>
   <script src="scenery.js?v=1.4.0" defer></script>
@@ -41,10 +41,10 @@
       <div class="arena">
         <canvas id="game" width="800" height="420" role="img" aria-label="Zwei Gorillas stehen auf gegenüberliegenden Hochhäusern. Winkel und Stärke werden unter dem Spielfeld eingegeben.">Zum Spielen benötigst du einen Browser mit Canvas-Unterstützung.</canvas>
         <canvas id="classic-game" width="640" height="350" tabindex="0" hidden role="img" aria-label="Classic: QBasic Gorillas. Winkel und Stärke nacheinander eingeben und mit Enter bestätigen."></canvas>
-        <canvas id="game3d" width="1200" height="720" tabindex="0" hidden role="img" aria-label="Dreidimensionale Stadt. Ziehen dreht die Kamera, Mausrad zoomt. A und D drehen, Plus und Minus zoomen, Pos1 zeigt die Übersicht."></canvas>
+        <canvas id="game3d" width="1200" height="720" tabindex="0" hidden role="img" aria-label="Dreidimensionale Stadt. Links ziehen dreht, rechts ziehen oder Shift und Ziehen verschiebt die Kamera, Mausrad zoomt. I J K L verschieben, A und D drehen, Plus und Minus zoomen, Pos1 zeigt die Übersicht."></canvas>
         <canvas id="hud3d" width="1200" height="720" hidden aria-hidden="true"></canvas>
         <div class="view-tools" id="view-tools" hidden>
-          <span class="view-status" id="view-status">3D · ZIEHEN ZUM DREHEN</span>
+          <span class="view-status" id="view-status">3D · LINKS DREHEN · RECHTS VERSCHIEBEN</span>
           <div><button type="button" id="camera-overview" title="Kamera zurücksetzen">Übersicht</button><button type="button" id="camera-player" title="Blick vom aktiven Gorilla über die Stadt">Am Wurf</button><button type="button" id="camera-in" aria-label="Kamera vergrößern">+</button><button type="button" id="camera-out" aria-label="Kamera verkleinern">−</button></div>
         </div>
         <div class="weather"><div class="wind-indicator" id="wind" role="img" aria-label="Windstille"><span id="wind-label">WINDSTILLE</span><svg id="wind-gauge" viewBox="0 0 140 16" aria-hidden="true"><path class="wind-axis" d="M70 1V15"/><path id="wind-arrow" d="M70 8H70"/></svg></div><span id="gravity-label">g 9,8</span></div>

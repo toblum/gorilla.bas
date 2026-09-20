@@ -26,7 +26,8 @@
     quad(a, b, c, d, color, normal) {
       const col = Array.isArray(color) ? color : rgb(color);
       const n = normal || norm(cross(b.map((v, i) => v - a[i]), c.map((v, i) => v - a[i])));
-      for (const p of [a, b, c, a, c, d]) this.data.push(...p, ...n, ...col);
+      const points=[a,b,c,d];
+      for (const i of [0,1,2,0,2,3]) this.data.push(...points[i], ...(Array.isArray(n[0])?n[i]:n), ...(Array.isArray(col[0])?col[i]:col));
     }
     appendRotated(mesh, origin, heading, scale = 1) {
       const co = Math.sin(heading), si = Math.cos(heading);
@@ -66,7 +67,7 @@
       const gl = this.gl = canvas.getContext('webgl', { antialias: true, alpha: true, powerPreference: 'low-power' });
       if (!gl) throw new Error('WebGL ist in diesem Browser nicht verfügbar. Bitte aktiviere Hardwarebeschleunigung oder wähle 2D.');
       const shader = (type, source) => { const s = gl.createShader(type); gl.shaderSource(s, source); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
-      const vs = shader(gl.VERTEX_SHADER, 'attribute vec3 aPosition; attribute vec3 aNormal; attribute vec3 aColor; uniform mat4 uMatrix; uniform vec3 uEye; varying vec3 vColor; varying float vFog; void main(){ gl_Position=uMatrix*vec4(aPosition,1.0); float sun=max(0.0,dot(aNormal,normalize(vec3(-0.6,1.0,0.4)))); vec3 light=mix(vec3(0.40,0.47,0.50),vec3(0.72,0.77,0.78),aNormal.y*0.5+0.5)+vec3(0.48,0.40,0.29)*sun; vColor=aColor*(length(aNormal)<0.1?vec3(1.08):light); vFog=smoothstep(1000.0,2800.0,distance(aPosition,uEye))*0.97; }');
+      const vs = shader(gl.VERTEX_SHADER, 'attribute vec3 aPosition; attribute vec3 aNormal; attribute vec3 aColor; uniform mat4 uMatrix; uniform vec3 uEye; varying vec3 vColor; varying float vFog; void main(){ gl_Position=uMatrix*vec4(aPosition,1.0); float sun=max(0.0,dot(aNormal,normalize(vec3(-0.6,1.0,0.4)))); vec3 light=mix(vec3(0.61,0.66,0.68),vec3(0.78,0.81,0.80),aNormal.y*0.5+0.5)+vec3(0.22,0.18,0.12)*sun; vColor=aColor*(length(aNormal)<0.1?vec3(1.08):light); vFog=smoothstep(1000.0,2800.0,distance(aPosition,uEye))*0.97; }');
       const fs = shader(gl.FRAGMENT_SHADER, 'precision mediump float; varying vec3 vColor; varying float vFog; void main(){gl_FragColor=vec4(mix(vColor,vec3(0.73,0.77,0.75),vFog),1.0);}');
       this.program = gl.createProgram(); gl.attachShader(this.program, vs); gl.attachShader(this.program, fs); gl.linkProgram(this.program);
       if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(this.program));
@@ -83,13 +84,33 @@
       canvas.parentElement.append(this.replayPanel);
       this.replayPanel.querySelector('button').addEventListener('click',()=>this.closeReplay());
       canvas.addEventListener('webglcontextlost', event => { event.preventDefault(); this.lost = true; document.getElementById('view-status').textContent = '3D-Grafik unterbrochen. Bitte neu laden oder über Neues Match zu 2D wechseln.'; });
-      canvas.addEventListener('pointerdown', e => { if (e.button !== 0) return; this.drag = { x: e.clientX, y: e.clientY, id: e.pointerId }; canvas.setPointerCapture(e.pointerId); });
-      canvas.addEventListener('pointermove', e => { if (!this.drag || this.drag.id !== e.pointerId) return; this.camera.orbit(-(e.clientX-this.drag.x)*.006,(e.clientY-this.drag.y)*.004); this.drag.x=e.clientX;this.drag.y=e.clientY; });
+      this.bindCameraControls();
+    }
+    bindCameraControls() {
+      const canvas=this.canvas;
+      canvas.addEventListener('contextmenu', e => e.preventDefault());
+      canvas.addEventListener('pointerdown', e => {
+        if (![0,2].includes(e.button)) return;
+        e.preventDefault();canvas.focus({preventScroll:true});
+        this.drag = { x:e.clientX, y:e.clientY, id:e.pointerId, pan:e.button===2||e.shiftKey };
+        canvas.setPointerCapture(e.pointerId);
+      });
+      canvas.addEventListener('pointermove', e => {
+        if (!this.drag || this.drag.id !== e.pointerId) return;
+        const dx=e.clientX-this.drag.x,dy=e.clientY-this.drag.y;
+        if(this.drag.pan) {
+          const scale=2*this.camera.pose.distance*Math.tan(Math.PI/8)*Math.max(1,1.45/(canvas.clientWidth/canvas.clientHeight))/Math.max(1,canvas.clientHeight);
+          this.camera.pan(-dx*scale,dy*scale/Math.max(.3,Math.sin(this.camera.pose.pitch)));
+        } else this.camera.orbit(-dx*.006,dy*.004);
+        this.drag.x=e.clientX;this.drag.y=e.clientY;
+      });
       const end = () => { this.drag = null; }; canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end); canvas.addEventListener('lostpointercapture', end);
       canvas.addEventListener('wheel', e => { if (e.ctrlKey || e.metaKey) return; e.preventDefault(); this.zoom(e.deltaY > 0 ? 1.08 : 1/1.08); }, { passive: false });
       canvas.addEventListener('keydown', e => {
         if (e.key === 'a' || e.key === 'd') { this.camera.orbit(e.key === 'a' ? .1 : -.1,0); e.preventDefault(); }
         if (e.key === '+' || e.key === '-') { this.zoom(e.key === '+' ? .9 : 1.1); e.preventDefault(); }
+        const panKeys={j:[-30,0],l:[30,0],i:[0,30],k:[0,-30]};
+        if(panKeys[e.key.toLowerCase()]) { this.camera.pan(...panKeys[e.key.toLowerCase()]);e.preventDefault(); }
         if (e.key === 'Home') { this.resetCamera(); e.preventDefault(); }
       });
     }
@@ -108,6 +129,63 @@
         for(let i=0;i<6;i++){
           const a=i*Math.PI/3,b=(i+1)*Math.PI/3;
           m.quad([x+Math.cos(a)*r,y,z+Math.sin(a)*r],[x+Math.cos(b)*r,y,z+Math.sin(b)*r],top,top,['#547861','#62836a','#789477'][tier]);
+        }
+      }
+    }
+    streetSurface(m,game,{left,right,back,front}) {
+      const base=rgb('#637472');
+      // Bake a soft shadow field into the road itself, avoiding floating dark polygons.
+      // This is an inexpensive approximation of diffuse sunlight, not a shadow map.
+      const color=(x,z)=>{
+        let shade=0;
+        for(const b of game.buildings) {
+          const dx=b.height*.45,dz=-b.height*.3,cx=b.x+b.width/2,cz=b.z+b.depth/2;
+          const t=Math.max(0,Math.min(1,((x-cx)*dx+(z-cz)*dz)/(dx*dx+dz*dz)));
+          const qx=Math.abs(x-dx*t-cx)-b.width/2,qz=Math.abs(z-dz*t-cz)-b.depth/2;
+          const distance=Math.hypot(Math.max(0,qx),Math.max(0,qz))+Math.min(0,Math.max(qx,qz));
+          const blur=10+b.height*.07,u=Math.max(0,Math.min(1,.5-distance/(2*blur)));
+          shade=Math.max(shade,u*u*(3-2*u)*.22);
+        }
+        return base.map(v=>v*(1-shade));
+      };
+      const xs=[],zs=[];for(let x=left;x<right;x+=16)xs.push(x);xs.push(right);for(let z=back;z<front;z+=16)zs.push(z);zs.push(front);
+      const colors=zs.map(z=>xs.map(x=>color(x,z)));
+      for(let j=0;j<zs.length-1;j++)for(let i=0;i<xs.length-1;i++) {
+        const x=xs[i],X=xs[i+1],z=zs[j],Z=zs[j+1];
+        m.quad([x,1,z],[x,1,Z],[X,1,Z],[X,1,z],[colors[j][i],colors[j+1][i],colors[j+1][i+1],colors[j][i+1]],[0,1,0]);
+      }
+    }
+    countryside(m,{left,right,back,front}) {
+      // Smooth low hills and farm clearings continue beyond the existing woodland ring.
+      const hills=[[left-460,back+220,310,260,85],[right+460,back+180,330,270,100],
+        [left-440,back-430,420,320,135],[right+480,back-420,440,350,155],
+        [left-120,back-820,380,340,120],[right+30,back-920,420,380,165]];
+      for(const [cx,cz,rx,rz,height] of hills) {
+        const point=(u,v)=>{
+          const q=Math.max(0,1-u*u-v*v);
+          return [cx+u*rx,-.8+height*q*q,cz+v*rz];
+        };
+        const color=(u,v)=>{const q=Math.max(0,1-u*u-v*v);return rgb('#98aa8a').map((c,i)=>c+(rgb('#8fa384')[i]-c)*q);};
+        const normal=(u,v)=>{const q=Math.max(0,1-u*u-v*v);return norm([4*height*q*u/rx,1,4*height*q*v/rz]);};
+        for(let j=0;j<12;j++)for(let i=0;i<12;i++) {
+          const u=i/6-1,v=j/6-1,U=(i+1)/6-1,V=(j+1)/6-1;
+          m.quad(point(u,v),point(u,V),point(U,V),point(U,v),[color(u,v),color(u,V),color(U,V),color(U,v)],[normal(u,v),normal(u,V),normal(U,V),normal(U,v)]);
+        }
+        for(let i=0;i<18;i++) {
+          const a=i*2.399,r=.35+(i%4)*.13,u=Math.cos(a)*r,v=Math.sin(a)*r,p=point(u,v),tree=new Mesh();
+          this.pine(tree,0,0,.65+i%3*.18);m.appendRotated(tree,p,Math.PI/2);
+        }
+      }
+      for(const side of [-1,1]) {
+        const x=side<0?left-400:right+310,z=front-125;
+        // Pasture strips, a farm lane and two modest outbuildings remain static.
+        for(let i=0;i<4;i++)m.box(x+i*22,-.5,z,20,.4,95,i%2?'#aaa77b':'#a3ae83');
+        m.line([x-15,.1,front-18],[x-15,.1,z-30],4,'#c0b495');
+        for(let i=0;i<2;i++) {
+          const X=x+i*44,Z=z-35;
+          m.box(X,0,Z,29,15,23,'#b7a48a');
+          m.quad([X-3,15,Z-3],[X+32,15,Z-3],[X+32,24,Z+11.5],[X-3,24,Z+11.5],'#8c8071');
+          m.quad([X-3,24,Z+11.5],[X+32,24,Z+11.5],[X+32,15,Z+26],[X-3,15,Z+26],'#8c8071');
         }
       }
     }
@@ -183,7 +261,8 @@
         m.quad([x,0,shore],[x,0,shore+44],[x+300,0,shore+44],[x+300,0,shore],'#d5bd90',[0,1,0]);
         for(let z=shore+44;z<6000;z+=300)m.quad([x,-2,z],[x,-2,z+300],[x+300,-2,z+300],[x+300,-2,z],'#78a9ab',[0,1,0]);
       }
-      m.box(left,-1,back,right-left,2,front-back,'#637472');
+      m.box(left,-1,back,right-left,2,front-back,'#637472',[true,true,true,true,false,true]);
+      this.streetSurface(m,game,bounds);
       // Boulevards continue out into the surrounding landscape.
       m.box(-1800,.05,front-18,3600,.4,18,'#76837b');
       m.box(-12,.05,-1800,22,.4,1800+back,'#76837b');
@@ -194,6 +273,7 @@
         const x=-1400+(i*157)%2800,z=shore+53+(i*59)%850;
         m.box(x,-1.8,z,18+(i%5)*12,.15,1.4,'#bad0c3');
       }
+      this.countryside(m,bounds);
       this.landscape(m,bounds);
       const columns=[...new Set(game.plots.map(p=>p.x))].sort((a,b)=>a-b),rows=[...new Set(game.plots.map(p=>p.z))].sort((a,b)=>a-b);
       for(const x0 of columns.slice(0,-1)) {
@@ -213,11 +293,6 @@
           m.box(p.x+17,3,p.z+17,38,2,38,'#d9ccaf'); m.box(p.x+22,5,p.z+22,28,1,28,'#7dafb0');
           m.box(p.x+32,6,p.z+32,8,17,8,'#c3cbbb'); m.sphere(p.x+36,26,p.z+36,5,'#dfd6b8');
         }
-      }
-      // Ground shadows are baked and rebuilt alongside damaged architecture.
-      for(const b of game.buildings) {
-        const length=b.height*.5;
-        m.quad([b.x,3.05,b.z],[b.x+b.width,3.05,b.z],[b.x+b.width+length,3.05,b.z-length*.6],[b.x+length,3.05,b.z-length*.6],'#586e68',[0,1,0]);
       }
       for(const b of game.buildings) this.building(m,b);
       for(let x=left+18;x<right-20;x+=53) {
