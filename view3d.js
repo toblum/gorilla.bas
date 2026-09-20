@@ -70,6 +70,47 @@
       return {point,impactAge:(elapsed-this.approach)*1.7/this.explosionDuration,done:elapsed>=this.duration,progress:clamp(elapsed/this.duration,0,1)};
     }
   }
-  const api={CameraRig,ImpactReplay};
+  // Decorative traffic owns no game state and never consumes the gameplay RNG.
+  class AmbientLife {
+    constructor(game) {
+      const {left,right,back,front,shore}=spatial.cityBounds(game);
+      const columns=[...new Set(game.plots.map(p=>p.x))].sort((a,b)=>a-b);
+      this.actors=[];
+      const add=(kind,route,speed,offset,y=1.5)=>{
+        const lengths=route.map((p,i)=>Math.hypot(p[0]-route[(i+1)%route.length][0],p[1]-route[(i+1)%route.length][1]));
+        this.actors.push({kind,route,lengths,length:lengths.reduce((a,b)=>a+b,0),speed,offset,y,pose:[0,y,0],heading:0});
+      };
+      // Two separated circuits use the centres of real lanes, including the outer streets.
+      for(const [a,b] of [[0,2],[5,7]]) {
+        const route=[[columns[a]+87,back+13],[columns[b]+79,back+13],[columns[b]+79,front-25],[columns[a]+87,front-25]];
+        add('car',route,13,.12);add(a===0?'taxi':'bus',route,13,.62);
+      }
+      // Wrapping happens in the distance haze, beyond the playable city.
+      add('bus',[[-1750,front-5],[1750,front-5]],16,.48,.5);
+      add('taxi',[[1750,front-13],[-1750,front-13]],19,.57,.5);
+      add('car',[[-1750,front-5],[1750,front-5]],16,.58,.5);
+      add('sailboat',[[-1600,shore+185],[1600,shore+185]],5,.53,-2);
+      add('boat',[[1600,shore+330],[-1600,shore+330]],8,.44,-2);
+      for(let i=0;i<4;i++)add('walker',[[left+45,front+6],[right-45,front+6],[right-45,front+12],[left+45,front+12]],2.2,i/4,4);
+      add('airship',[[-1600,back-370],[1600,back-370]],7,.55,335);
+      this.time=0;this.lastClock=null;
+      this.update(0,true);
+    }
+    update(clock,frozen=false) {
+      if(this.lastClock!==null&&!frozen)this.time+=Math.max(0,Math.min(50,clock-this.lastClock))/1000;
+      this.lastClock=clock;
+      for(const actor of this.actors) {
+        // Two-point routes wrap instead of reversing direction at the horizon.
+        const length=actor.route.length===2?actor.lengths[0]:actor.length;
+        let distance=(actor.offset*length+this.time*actor.speed)%length,index=0;
+        while(distance>actor.lengths[index])distance-=actor.lengths[index++];
+        const a=actor.route[index],b=actor.route[(index+1)%actor.route.length],t=distance/actor.lengths[index];
+        actor.pose[0]=a[0]+(b[0]-a[0])*t;actor.pose[2]=a[1]+(b[1]-a[1])*t;
+        actor.heading=Math.atan2(b[0]-a[0],b[1]-a[1]);
+      }
+      return this.actors;
+    }
+  }
+  const api={CameraRig,ImpactReplay,AmbientLife};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.GorillaView3D=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

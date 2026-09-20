@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const { CELL, SUN, occupied, launchVector, cityBounds, windsockSites, windPose } = window.Gorillas3D;
-  const { CameraRig, ImpactReplay } = window.GorillaView3D;
+  const { CameraRig, ImpactReplay, AmbientLife } = window.GorillaView3D;
   const palette = ['#678781', '#c68e77', '#c6bda3', '#587080', '#a5b5a0'];
   const playerColors = ['#fa8650', '#bce0bd'];
   const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
@@ -66,14 +66,14 @@
       const gl = this.gl = canvas.getContext('webgl', { antialias: true, alpha: true, powerPreference: 'low-power' });
       if (!gl) throw new Error('WebGL ist in diesem Browser nicht verfügbar. Bitte aktiviere Hardwarebeschleunigung oder wähle 2D.');
       const shader = (type, source) => { const s = gl.createShader(type); gl.shaderSource(s, source); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
-      const vs = shader(gl.VERTEX_SHADER, 'attribute vec3 aPosition; attribute vec3 aNormal; attribute vec3 aColor; uniform mat4 uMatrix; uniform vec3 uEye; varying vec3 vColor; varying float vFog; void main(){ gl_Position=uMatrix*vec4(aPosition,1.0); float light=length(aNormal)<0.1?1.2:0.62+max(0.0,dot(aNormal,normalize(vec3(-0.6,1.0,0.4))))*0.48; vColor=aColor*light; vFog=smoothstep(1000.0,2800.0,distance(aPosition,uEye))*0.97; }');
+      const vs = shader(gl.VERTEX_SHADER, 'attribute vec3 aPosition; attribute vec3 aNormal; attribute vec3 aColor; uniform mat4 uMatrix; uniform vec3 uEye; varying vec3 vColor; varying float vFog; void main(){ gl_Position=uMatrix*vec4(aPosition,1.0); float sun=max(0.0,dot(aNormal,normalize(vec3(-0.6,1.0,0.4)))); vec3 light=mix(vec3(0.40,0.47,0.50),vec3(0.72,0.77,0.78),aNormal.y*0.5+0.5)+vec3(0.48,0.40,0.29)*sun; vColor=aColor*(length(aNormal)<0.1?vec3(1.08):light); vFog=smoothstep(1000.0,2800.0,distance(aPosition,uEye))*0.97; }');
       const fs = shader(gl.FRAGMENT_SHADER, 'precision mediump float; varying vec3 vColor; varying float vFog; void main(){gl_FragColor=vec4(mix(vColor,vec3(0.73,0.77,0.75),vFog),1.0);}');
       this.program = gl.createProgram(); gl.attachShader(this.program, vs); gl.attachShader(this.program, fs); gl.linkProgram(this.program);
       if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(this.program));
       gl.deleteShader(vs); gl.deleteShader(fs); gl.useProgram(this.program);
       this.attributes = ['aPosition', 'aNormal', 'aColor'].map(n => gl.getAttribLocation(this.program, n));
       this.uMatrix = gl.getUniformLocation(this.program, 'uMatrix'); this.uEye = gl.getUniformLocation(this.program, 'uEye');
-      this.staticBuffer = gl.createBuffer(); this.dynamicBuffer = gl.createBuffer();
+      this.staticBuffer = gl.createBuffer(); this.dynamicBuffer = gl.createBuffer(); this.ambientBuffer = gl.createBuffer();
       gl.enable(gl.DEPTH_TEST); gl.clearColor(0,0,0,0);
       this.camera = new CameraRig(); this.clock = 0; this.cachedGame = null; this.revision = -1; this.lost = false;
       this.replayPanel = document.createElement('section');
@@ -224,18 +224,84 @@
         this.tree(m,x,front+17,.6);
         m.box(x+12,4,front+7,10,2.5,3,'#8a7257');m.box(x+12,6.5,front+9,10,4,1,'#8a7257');
       }
-      for(let i=0;i<24;i++) {
-        const x=columns[i%(columns.length-1)]+77,z=rows[i%rows.length]-18+(i%3)*11;
-        const color=['#d9b15f','#b5c7b6','#c47760','#d7d2be'][i%4];
-        m.box(x,1.5,z,6,4,12,color);m.box(x+.5,5.5,z+3,5,3,6,'#526d75');
-        m.box(x-.6,2,z+2,1,2,2,'#38464a');m.box(x+5.6,2,z+8,1,2,2,'#38464a');
-      }
       for(const x of columns){m.box(x-14,3,back+12,1,23,1,'#546965');m.box(x-15,26,back+11,6,1.5,3,'#ffe1a2');}
+      for(let i=0;i<7;i++) {
+        const x=left+65+i*63,z=shore+17+(i%2)*13;
+        m.box(x-5,.1,z-4,10,.2,17,i%2?'#d59373':'#8baeb0');
+        m.box(x,0,z,1,13,1,'#a58b67');
+        for(let j=0;j<8;j++) {
+          const a=j*Math.PI/4,b=(j+1)*Math.PI/4;
+          m.quad([x,16,z],[x+Math.cos(a)*10,12,z+Math.sin(a)*10],[x+Math.cos(b)*10,12,z+Math.sin(b)*10],[x,16,z],j%2?'#e6d5ae':'#bc8065');
+        }
+        m.box(x-3,.5,z+7,3,1.5,5,'#cead8b');m.box(x-3,2,z+8,3,1,3,'#698b91');
+      }
       const pierX=right-100;
       m.box(pierX,-.5,shore-1,24,3,106,'#947d60');
       for(let z=shore+2;z<shore+104;z+=6)m.box(pierX,2.6,z,24,.3,.7,'#d6be94');
       m.box(pierX+41,-3,shore+70,16,6,34,'#ece0be');m.box(pierX+43,3,shore+76,12,7,18,'#d39a77');m.box(pierX+44,10,shore+78,10,1,14,'#efe6cd');
       this.staticCount = this.upload(this.staticBuffer,m,this.gl.STATIC_DRAW);
+    }
+    ambientModel(kind) {
+      const m=new Mesh(),glass='#526f79',dark='#36494d';
+      if(['car','taxi','bus'].includes(kind)) {
+        const bus=kind==='bus',length=bus?23:12,color=bus?'#b1c8b1':kind==='taxi'?'#dfb75d':'#bd7863';
+        m.box(-3,1,-length/2,6,bus?7:3,length,color);
+        m.box(-2.7,bus?5:4,-length/2+3,5.4,3,length-6,glass);
+        m.box(-3,bus?8:7,-length/2+2,6,1,length-4,color);
+        for(const x of [-3.5,2.5])for(const z of [-length/2+2,length/2-4])m.box(x,0,z,1,2.5,2,dark);
+        for(const x of [-2.5,1.5])m.box(x,2,length/2+.05,1,1,.2,'#f9e3b2');
+        if(kind==='taxi')m.box(-1,8,-1,2,1.2,2,'#f9e3b2');
+      } else if(kind==='boat'||kind==='sailboat') {
+        m.box(-5,0,-11,10,3,22,'#e8d9b8');m.box(-3,3,-6,6,4,9,'#8aada6');
+        m.quad([-5,0,11],[5,0,11],[0,2,18],[0,2,18],'#e8d9b8');
+        if(kind==='sailboat') {
+          m.box(0,3,-1,1,33,1,'#a68b69');
+          m.quad([1,35,0],[1,8,0],[1,8,17],[1,35,0],'#fff0cd');
+          m.quad([0,30,0],[0,8,-12],[0,8,0],[0,30,0],'#d3a27c');
+        } else {m.box(-3,7,-7,6,1,11,'#eedec0');m.box(-2.7,4,3.1,5.4,2,.2,glass);}
+        // Small wake stays attached to the hull; no particles or water simulation.
+        for(const x of [-4,4])m.line([x,.2,-12],[x*2,.2,-30],1,'#c3d6c9');
+      } else if(kind==='walker') {
+        m.box(-1,1.5,-.8,2,3,1.6,'#ba8268');m.box(-.8,4.5,-.7,1.6,1.6,1.4,'#dbbc91');
+        for(const x of [-.8,.3])m.box(x,0,-.6,.6,1.5,1.2,dark);
+      } else {
+        // Low-poly airship: one quiet silhouette, well behind the skyline.
+        for(let j=0;j<6;j++)for(let i=0;i<10;i++) {
+          const p=(a,b)=>[Math.sin(b*Math.PI/6)*Math.cos(a*Math.PI/5)*12,Math.sin(b*Math.PI/6)*Math.sin(a*Math.PI/5)*12,Math.cos(b*Math.PI/6)*36];
+          m.quad(p(i,j),p(i+1,j),p(i+1,j+1),p(i,j+1),i<5?'#e0d4b6':'#abbeb1');
+        }
+        m.box(-3,-15,-8,6,5,15,'#967e63');m.box(-1,-5,-34,2,21,11,'#a98167');m.box(-15,-1,-32,30,2,9,'#a98167');
+      }
+      return new Float32Array(m.data);
+    }
+    drawAmbient(game,reduced) {
+      const gl=this.gl;
+      if(this.ambientGame!==game||this.ambientRound!==game.round) {
+        this.ambientGame=game;this.ambientRound=game.round;this.life=new AmbientLife(game);
+        this.ambientModels??=new Map();
+        for(const actor of this.life.actors) {
+          if(!this.ambientModels.has(actor.kind))this.ambientModels.set(actor.kind,this.ambientModel(actor.kind));
+          actor.mesh=this.ambientModels.get(actor.kind);
+        }
+        this.ambientData=new Float32Array(this.life.actors.reduce((n,a)=>n+a.mesh.length,0));
+        this.ambientTime=null;
+        gl.bindBuffer(gl.ARRAY_BUFFER,this.ambientBuffer);gl.bufferData(gl.ARRAY_BUFFER,this.ambientData.byteLength,gl.DYNAMIC_DRAW);
+      }
+      const actors=this.life.update(this.clock,reduced);
+      if(this.ambientTime!==this.life.time) {
+        this.ambientTime=this.life.time;
+        let offset=0;
+        for(const actor of actors) {
+          const a=actor.mesh,c=Math.cos(actor.heading),s=Math.sin(actor.heading),out=this.ambientData;
+          for(let i=0;i<a.length;i+=9) {
+            out[offset++]=actor.pose[0]+a[i]*c+a[i+2]*s;out[offset++]=actor.pose[1]+a[i+1];out[offset++]=actor.pose[2]-a[i]*s+a[i+2]*c;
+            out[offset++]=a[i+3]*c+a[i+5]*s;out[offset++]=a[i+4];out[offset++]=-a[i+3]*s+a[i+5]*c;
+            out[offset++]=a[i+6];out[offset++]=a[i+7];out[offset++]=a[i+8];
+          }
+        }
+        gl.bindBuffer(gl.ARRAY_BUFFER,this.ambientBuffer);gl.bufferSubData(gl.ARRAY_BUFFER,0,this.ambientData);
+      }
+      this.renderBuffer(this.ambientBuffer,this.ambientData.length/9);
     }
     building(m,b) {
       const C=CELL, col=rgb(palette[b.color]);
@@ -246,12 +312,12 @@
         const X=b.x+x*C,Y=y*C,Z=b.z+z*C;
         const tint=((x*7+z*13+y*3+b.seed)%11===0) ? col.map(v=>v*.95) : col;
         m.box(X,Y,Z,C,C,C,tint,faces);
-        const light=(x*11+z*7+y*3+b.seed)%9<3, window=light?'#f8dba0':'#3d5961';
+        const light=(x*11+z*7+y*3+b.seed)%13<3, window=light?((y+b.seed)%3?'#e9c68e':'#f3dfb2'):'#54727c';
         const yy=Y+2,top=Y+6;
-        if(faces[0]&&z===b.nz-1)m.quad([X+2,yy,Z+C+.03],[X+5,yy,Z+C+.03],[X+5,top,Z+C+.03],[X+2,top,Z+C+.03],window,[0,0,1]);
-        if(faces[1]&&z===0)m.quad([X+5,yy,Z-.03],[X+2,yy,Z-.03],[X+2,top,Z-.03],[X+5,top,Z-.03],window,[0,0,-1]);
-        if(faces[2]&&x===b.nx-1)m.quad([X+C+.03,yy,Z+2],[X+C+.03,yy,Z+5],[X+C+.03,top,Z+5],[X+C+.03,top,Z+2],window,[1,0,0]);
-        if(faces[3]&&x===0)m.quad([X-.03,yy,Z+5],[X-.03,yy,Z+2],[X-.03,top,Z+2],[X-.03,top,Z+5],window,[-1,0,0]);
+        if(faces[0]&&z===b.nz-1)m.quad([X+2,yy,Z+C+.03],[X+5,yy,Z+C+.03],[X+5,top,Z+C+.03],[X+2,top,Z+C+.03],window,light?[0,0,0]:[0,0,1]);
+        if(faces[1]&&z===0)m.quad([X+5,yy,Z-.03],[X+2,yy,Z-.03],[X+2,top,Z-.03],[X+5,top,Z-.03],window,light?[0,0,0]:[0,0,-1]);
+        if(faces[2]&&x===b.nx-1)m.quad([X+C+.03,yy,Z+2],[X+C+.03,yy,Z+5],[X+C+.03,top,Z+5],[X+C+.03,top,Z+2],window,light?[0,0,0]:[1,0,0]);
+        if(faces[3]&&x===0)m.quad([X-.03,yy,Z+5],[X-.03,yy,Z+2],[X-.03,top,Z+2],[X-.03,top,Z+5],window,light?[0,0,0]:[-1,0,0]);
         if(faces[4]&&y===b.ny-1)m.box(X,Y+C+.04,Z,C,.3,C,'#c3c4ad',[false,false,false,false,true,false]);
       }
       // Roof details sit only on intact roof voxels, including after explosions.
@@ -411,6 +477,7 @@
       this.observeReplay(game);
       if(this.cachedGame!==game||this.revision!==game.revision) { this.staticCity(game);this.cachedGame=game;this.revision=game.revision; }
       this.renderBuffer(this.staticBuffer,this.staticCount);
+      this.drawAmbient(game,reduced);
       const m=new Mesh();
       this.sun(m,game,eye,time,reduced);
       for(const site of this.windSites)this[site.type==='flag'?'flag':'windsock'](m,site,game.wind,game.windZ,time,reduced);

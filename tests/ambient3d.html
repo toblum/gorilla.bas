@@ -1,0 +1,27 @@
+<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Stadtleben prüfen</title>
+<link rel="stylesheet" href="../style.css"><style>body{padding:16px}main{max-width:1150px;margin:auto}nav{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}button{padding:8px}#report{font:12px monospace;white-space:pre-wrap}.scene{position:relative;background:#bdc7bf}#game3d{height:560px}#view-status{display:none}</style>
+<main><nav><button id="coast">Promenade</button><button id="sky">Skyline</button><button id="overview">Übersicht</button><button id="next">Neue Stadt</button><button id="damage">Gebäudeschaden</button><label><input id="paused" type="checkbox">Pause</label><label><input id="reduced" type="checkbox">Reduzierte Bewegung</label><label><input id="enabled" type="checkbox" checked>Stadtleben</label></nav><pre id="report"></pre><div class="scene"><canvas id="game3d" tabindex="0"></canvas><canvas id="hud3d"></canvas></div><span id="view-status"></span></main>
+<script src="../engine.js"></script><script src="../engine3d.js"></script><script src="../view3d.js"></script><script src="../city3d.js"></script>
+<script>
+let seed=42;const game=new Gorillas3D.Game3D({names:['Orange','Mint']},()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296));
+const $=id=>document.getElementById(id),renderer=new GorillaCity3D($('game3d'),$('hud3d'));
+let samples=[],ambientSamples=[],gaps=[],previous=0,ambientMs=0,uploads=0;
+const drawAmbient=renderer.drawAmbient.bind(renderer),upload=renderer.gl.bufferSubData.bind(renderer.gl);
+renderer.gl.bufferSubData=(...args)=>{uploads++;return upload(...args);};
+renderer.drawAmbient=(...args)=>{const start=performance.now();if($('enabled').checked)drawAmbient(...args);ambientMs=performance.now()-start;};
+const view=(yaw,pitch,distance,target)=>renderer.camera.moveTo({yaw,pitch,distance,target},true);
+$('coast').onclick=()=>view(.15,.65,530,[30,15,Gorillas3D.cityBounds(game).shore+20]);
+$('sky').onclick=()=>view(0,.28,1400,[0,160,-200]);
+$('overview').onclick=()=>view(.42,.7,1500,[0,55,30]);
+$('next').onclick=()=>game.newRound();
+$('damage').onclick=()=>{const b=game.buildings[8];game.destroy(b.x,b.height-10,b.z,24);};
+$('enabled').onchange=()=>{samples=[];ambientSamples=[];gaps=[];previous=0;};
+function frame(time){
+ if(previous)gaps.push(time-previous);previous=time;if(gaps.length>240)gaps.shift();
+ const start=performance.now();renderer.draw(game,time,{angle:45,power:80,direction:game.defaultDirection()},$('reduced').checked,$('paused').checked);
+ samples.push(performance.now()-start);ambientSamples.push(ambientMs);if(samples.length>240){samples.shift();ambientSamples.shift();}
+ const percentile=(a,q)=>a.length?+a.slice().sort((a,b)=>a-b)[Math.min(a.length-1,Math.floor(a.length*q))].toFixed(3):null;
+ $('report').textContent=JSON.stringify({actors:renderer.life?.actors.length,triangles:renderer.ambientData?.length/27,drawCalls:renderer.drawCalls,webglError:renderer.gl.getError(),frames:samples.length,cpuMedianMs:percentile(samples,.5),cpuP95Ms:percentile(samples,.95),ambientCpuMedianMs:percentile(ambientSamples,.5),ambientCpuP95Ms:percentile(ambientSamples,.95),fps:Math.round(1000/percentile(gaps,.5)),ambientTime:renderer.life?.time.toFixed(3),uploads},null,2);
+ requestAnimationFrame(frame);
+}requestAnimationFrame(frame);
+</script></html>
