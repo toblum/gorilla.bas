@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { Game3D, launchVector, pointAt, SUN, CELL, occupied } = require('../engine3d.js');
+const { Game3D, launchVector, pointAt, SUN, sunPosition, CELL, occupied } = require('../engine3d.js');
 const random = (seed = 42) => () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
 const make = options => new Game3D(options, random());
 const run = (g, fps = 60) => { for (let i = 0; i < fps * 70 && g.phase === 'flying'; i++) g.update(1 / fps); return g; };
@@ -60,7 +60,7 @@ test('Misses leave the city and alternate once; ground contact ends a shot', () 
   const miss=make();clear(miss);miss.fire(30,360,-90);run(miss);assert.equal(miss.lastEvent,'miss');assert.equal(miss.phase,'aiming');assert.equal(miss.turn,1);assert.deepEqual(miss.scores,[0,0]);
 });
 test('The sun charges in 3D space without changing velocity and increases crater size', () => {
-  const g=make();g.wind=g.windZ=0;g.gorillas[0]={x:SUN.x,y:SUN.y-65,z:SUN.z,alive:true};g.fire(90,40,0);
+  const g=make();g.wind=g.windZ=0;g.gorillas[0]={x:sunPosition(g).x,y:sunPosition(g).y-65,z:sunPosition(g).z,alive:true};g.fire(90,40,0);
   for(let i=0;i<400&&!g.shot?.charged;i++)g.update(1/60);
   assert.equal(g.shot.charged,true);assert.ok(Math.abs(g.shot.vy-40)<1e-8);
   const copy=make();assert.ok(copy.restore(g.snapshot()));copy.shot.charged=false;

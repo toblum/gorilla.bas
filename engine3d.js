@@ -23,6 +23,14 @@
     const xs = game.plots.map(p => p.x), zs = game.plots.map(p => p.z);
     return { left: Math.min(...xs) - 36, right: Math.max(...xs) + 108, back: Math.min(...zs) - 36, front: Math.max(...zs) + 108, shore: Math.max(...zs) + 135 };
   }
+  // Stable across reloads; no gameplay RNG is consumed for the time of day.
+  function sunPosition(game) {
+    const hours=[15,6,12,18.5,9], index=((game.round-1)%hours.length+hours.length)%hours.length;
+    const hour=hours[index]+((game.plots[0]?.seed||0)%101/100-.5)*.6;
+    const t=Math.max(.025,Math.min(.975,(hour-5.5)/13.5)),a=t*Math.PI;
+    const bounds=cityBounds(game);
+    return {x:-Math.cos(a)*680,y:65+Math.sin(a)*620,z:(bounds.back+bounds.front)/2-Math.cos(a)*850,radius:SUN.radius,hour};
+  }
   function windsockSites(game) {
     const sites = [];
     for (const b of game.buildings) {
@@ -136,6 +144,7 @@
       if (!Number.isFinite(seconds) || seconds <= 0) return;
       if (this.phase !== 'flying') { super.update(seconds); return; }
       if (this.impact) this.impact.age += seconds;
+      const sun=sunPosition(this);
       let remaining = Math.min(seconds, .1) * (this.shot.y > 650 ? 30 : 3);
       while (remaining > 0 && this.phase === 'flying') {
         const dt = Math.min(remaining, 1 / 120); remaining -= dt;
@@ -144,7 +153,7 @@
         for (let i = 1; i <= steps; i++) {
           const p = { x: s.x + (end.x - s.x) * i / steps, y: s.y + (end.y - s.y) * i / steps, z: s.z + (end.z - s.z) * i / steps };
           if (Math.abs(p.x) > 900 || Math.abs(p.z) > 900 || p.y < -20 || s.time > 160) { this.lastEvent = 'miss'; this.finishShot(); return; }
-          if (Math.hypot(p.x - SUN.x, p.y - SUN.y, p.z - SUN.z) < SUN.radius && !s.charged) { s.charged = true; this.sunHit = true; this.lastEvent = 'sun'; }
+          if (Math.hypot(p.x - sun.x, p.y - sun.y, p.z - sun.z) < sun.radius && !s.charged) { s.charged = true; this.sunHit = true; this.lastEvent = 'sun'; }
           const hit = this.collisionAt(p.x, p.y, p.z);
           if (hit) { Object.assign(s, p); s.time += dt * i / steps; this.collide(hit); return; }
         }
@@ -177,6 +186,6 @@
       return true;
     }
   }
-  const api = { Game3D, CELL, SUN, launchVector, pointAt, occupied, cellIndex, facingHeading, cityBounds, windsockSites, windPose };
+  const api = { Game3D, CELL, SUN, sunPosition, launchVector, pointAt, occupied, cellIndex, facingHeading, cityBounds, windsockSites, windPose };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Gorillas3D = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

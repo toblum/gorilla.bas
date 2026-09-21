@@ -5,6 +5,17 @@
   const copy=value=>JSON.parse(JSON.stringify(value));
   const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
   const angleDelta=(a,b)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
+  function daylight(game) {
+    const sun=spatial.sunPosition(game),bounds=spatial.cityBounds(game),z=(bounds.back+bounds.front)/2;
+    const direction=[sun.x,sun.y,sun.z-z],length=Math.hypot(...direction);
+    const warmth=clamp(Math.abs(sun.hour-12)/6.5,0,1),dusk=sun.hour>17||sun.hour<7;
+    const mix=(a,b)=>a.map((n,i)=>n+(b[i]-n)*warmth);
+    return {sun,direction:direction.map(v=>v/length),
+      ambient:mix([.48,.55,.63],[.27,.30,.43]),direct:mix([.58,.55,.48],[.85,.43,.20]),
+      fog:mix([.72,.84,.88],[.83,.57,.44]),sky:mix([.34,.64,.84],[.24,.28,.48]),
+      windowRate:dusk?.58:.07+warmth*.16,seed:(game.plots[0]?.seed||0)%997,
+      label:sun.hour<7?'Morgengrauen':sun.hour<11?'Vormittag':sun.hour<14?'Mittag':sun.hour<17?'Nachmittag':'Sonnenuntergang'};
+  }
   class CameraRig {
     constructor(){this.pose={yaw:.42,pitch:.6,distance:1080,target:[0,55,30]};this.views=[null,null];this.player=null;this.round=null;this.game=null;this.time=0;}
     defaultPose(game){
@@ -125,6 +136,6 @@
       return this.actors;
     }
   }
-  const api={CameraRig,ImpactReplay,AmbientLife};
+  const api={daylight,CameraRig,ImpactReplay,AmbientLife};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.GorillaView3D=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

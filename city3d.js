@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const { CELL, SUN, occupied, launchVector, cityBounds, windsockSites, windPose } = window.Gorillas3D;
-  const { CameraRig, ImpactReplay, AmbientLife } = window.GorillaView3D;
+  const { CameraRig, ImpactReplay, AmbientLife, daylight } = window.GorillaView3D;
   const palette = ['#678781', '#c68e77', '#c6bda3', '#587080', '#a5b5a0'];
   const playerColors = ['#fa8650', '#bce0bd'];
   const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
@@ -66,14 +66,59 @@
       this.canvas = canvas; this.hud = hud; this.ctx = hud.getContext('2d');
       const gl = this.gl = canvas.getContext('webgl', { antialias: true, alpha: true, powerPreference: 'low-power' });
       if (!gl) throw new Error('WebGL ist in diesem Browser nicht verfügbar. Bitte aktiviere Hardwarebeschleunigung oder wähle 2D.');
-      const shader = (type, source) => { const s = gl.createShader(type); gl.shaderSource(s, source); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
-      const vs = shader(gl.VERTEX_SHADER, 'attribute vec3 aPosition; attribute vec3 aNormal; attribute vec3 aColor; uniform mat4 uMatrix; uniform vec3 uEye; varying vec3 vColor; varying float vFog; void main(){ gl_Position=uMatrix*vec4(aPosition,1.0); float sun=max(0.0,dot(aNormal,normalize(vec3(-0.6,1.0,0.4)))); vec3 light=mix(vec3(0.61,0.66,0.68),vec3(0.78,0.81,0.80),aNormal.y*0.5+0.5)+vec3(0.22,0.18,0.12)*sun; vColor=aColor*(length(aNormal)<0.1?vec3(1.08):light); vFog=smoothstep(1000.0,2800.0,distance(aPosition,uEye))*0.97; }');
-      const fs = shader(gl.FRAGMENT_SHADER, 'precision mediump float; varying vec3 vColor; varying float vFog; void main(){gl_FragColor=vec4(mix(vColor,vec3(0.73,0.77,0.75),vFog),1.0);}');
+      this.highPrecision=gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER,gl.HIGH_FLOAT).precision>0;
+      const shader = (type, source) => { if(!this.highPrecision)source=source.replace('precision highp float','precision mediump float'); const s = gl.createShader(type); gl.shaderSource(s, source); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+      const vs = shader(gl.VERTEX_SHADER, `
+        attribute vec3 aPosition,aNormal,aColor;
+        uniform mat4 uMatrix,uLightMatrix;
+        varying vec3 vWorld,vNormal,vColor; varying vec4 vShadow;
+        void main(){gl_Position=uMatrix*vec4(aPosition,1.0);vWorld=aPosition;vNormal=aNormal;vColor=aColor;vShadow=uLightMatrix*vec4(aPosition,1.0);}`);
+      const fs = shader(gl.FRAGMENT_SHADER, `
+        precision highp float;
+        uniform vec3 uSun,uAmbient,uDirect,uFog,uCenter,uEye;
+        uniform float uWindowTime,uWindowRate,uSeed,uShadowEnabled,uShore;
+        uniform sampler2D uShadowMap;
+        varying vec3 vWorld,vNormal,vColor; varying vec4 vShadow;
+        float hash(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
+        float visibility(vec3 n){
+          vec3 p=vShadow.xyz*.5+.5;
+          if(uShadowEnabled<.5||p.x<0.0||p.x>1.0||p.y<0.0||p.y>1.0||p.z>1.0||p.z<0.0)return 1.0;
+          float bias=max(.0012,.0025*(1.0-max(0.0,dot(n,uSun))));
+          float sum=0.0;
+          for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){
+            vec2 d=texture2D(uShadowMap,p.xy+vec2(float(x),float(y))/1024.0).rg;
+            sum+=step(p.z-bias,d.x+d.y/255.0);
+          }
+          return sum/9.0;
+        }
+        void main(){
+          float size=length(vNormal);vec3 n=size>.1?vNormal/size:vec3(0.0);
+          float sun=max(0.0,dot(n,uSun));
+          vec3 light=uAmbient*(.83+.17*n.y)+uDirect*sun*visibility(n);
+          vec3 color=vColor*(size<.1?vec3(1.05):light);
+          if(size>1.5){
+            vec3 cell=vColor*179.0+n*137.0+uSeed;
+            float id=hash(cell),period=28.0+hash(cell+17.0)*62.0;
+            float t=(uWindowTime+id*period)/period,slot=floor(t);
+            float old=step(hash(cell+(slot-1.0)*19.0),uWindowRate),next=step(hash(cell+slot*19.0),uWindowRate);
+            float on=mix(old,next,smoothstep(0.0,1.5,fract(t)*period));
+            color=mix(vec3(.23,.36,.43)*light, mix(vec3(1.0,.65,.28),vec3(1.0,.87,.57),id),on);
+          }
+          if(vWorld.y<-.5&&vWorld.z>uShore+44.0&&n.y>.9){
+            float glint=pow(max(0.0,dot(reflect(-uSun,n),normalize(uEye-vWorld))),64.0);
+            color+=uDirect*glint*.8;
+          }
+          // Haze belongs to the distant landscape, independent of camera zoom.
+          float fog=smoothstep(850.0,2600.0,length(vWorld.xz-uCenter.xz))*.97;
+          gl_FragColor=vec4(mix(color,uFog,fog),1.0);
+        }`);
       this.program = gl.createProgram(); gl.attachShader(this.program, vs); gl.attachShader(this.program, fs); gl.linkProgram(this.program);
       if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(this.program));
       gl.deleteShader(vs); gl.deleteShader(fs); gl.useProgram(this.program);
       this.attributes = ['aPosition', 'aNormal', 'aColor'].map(n => gl.getAttribLocation(this.program, n));
       this.uMatrix = gl.getUniformLocation(this.program, 'uMatrix'); this.uEye = gl.getUniformLocation(this.program, 'uEye');
+      this.lightingUniforms=Object.fromEntries(['uLightMatrix','uSun','uAmbient','uDirect','uFog','uCenter','uWindowTime','uWindowRate','uSeed','uShadowEnabled','uShadowMap','uShore'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
+      this.initShadows(shader);
       this.staticBuffer = gl.createBuffer(); this.dynamicBuffer = gl.createBuffer(); this.ambientBuffer = gl.createBuffer();
       gl.enable(gl.DEPTH_TEST); gl.clearColor(0,0,0,0);
       this.camera = new CameraRig(); this.clock = 0; this.cachedGame = null; this.revision = -1; this.lost = false;
@@ -133,27 +178,51 @@
       }
     }
     streetSurface(m,game,{left,right,back,front}) {
-      const base=rgb('#637472');
-      // Bake a soft shadow field into the road itself, avoiding floating dark polygons.
-      // This is an inexpensive approximation of diffuse sunlight, not a shadow map.
-      const color=(x,z)=>{
-        let shade=0;
-        for(const b of game.buildings) {
-          const dx=b.height*.45,dz=-b.height*.3,cx=b.x+b.width/2,cz=b.z+b.depth/2;
-          const t=Math.max(0,Math.min(1,((x-cx)*dx+(z-cz)*dz)/(dx*dx+dz*dz)));
-          const qx=Math.abs(x-dx*t-cx)-b.width/2,qz=Math.abs(z-dz*t-cz)-b.depth/2;
-          const distance=Math.hypot(Math.max(0,qx),Math.max(0,qz))+Math.min(0,Math.max(qx,qz));
-          const blur=10+b.height*.07,u=Math.max(0,Math.min(1,.5-distance/(2*blur)));
-          shade=Math.max(shade,u*u*(3-2*u)*.22);
-        }
-        return base.map(v=>v*(1-shade));
-      };
-      const xs=[],zs=[];for(let x=left;x<right;x+=16)xs.push(x);xs.push(right);for(let z=back;z<front;z+=16)zs.push(z);zs.push(front);
-      const colors=zs.map(z=>xs.map(x=>color(x,z)));
-      for(let j=0;j<zs.length-1;j++)for(let i=0;i<xs.length-1;i++) {
-        const x=xs[i],X=xs[i+1],z=zs[j],Z=zs[j+1];
-        m.quad([x,1,z],[x,1,Z],[X,1,Z],[X,1,z],[colors[j][i],colors[j+1][i],colors[j+1][i+1],colors[j][i+1]],[0,1,0]);
-      }
+      m.quad([left,1,back],[left,1,front],[right,1,front],[right,1,back],'#637472',[0,1,0]);
+    }
+    initShadows(shader) {
+      const gl=this.gl;
+      const vs=shader(gl.VERTEX_SHADER,'attribute vec3 aPosition; uniform mat4 uMatrix; void main(){gl_Position=uMatrix*vec4(aPosition,1.0);}');
+      const fs=shader(gl.FRAGMENT_SHADER,'precision highp float; void main(){float d=gl_FragCoord.z*255.0;gl_FragColor=vec4(floor(d)/255.0,fract(d),0.0,1.0);}');
+      this.shadowProgram=gl.createProgram();gl.attachShader(this.shadowProgram,vs);gl.attachShader(this.shadowProgram,fs);gl.linkProgram(this.shadowProgram);
+      if(!gl.getProgramParameter(this.shadowProgram,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(this.shadowProgram));
+      gl.deleteShader(vs);gl.deleteShader(fs);
+      this.shadowPosition=gl.getAttribLocation(this.shadowProgram,'aPosition');this.shadowMatrixUniform=gl.getUniformLocation(this.shadowProgram,'uMatrix');
+      this.shadowTexture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.shadowTexture);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1024,1024,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+      for(const p of [gl.TEXTURE_MIN_FILTER,gl.TEXTURE_MAG_FILTER])gl.texParameteri(gl.TEXTURE_2D,p,gl.NEAREST);
+      for(const p of [gl.TEXTURE_WRAP_S,gl.TEXTURE_WRAP_T])gl.texParameteri(gl.TEXTURE_2D,p,gl.CLAMP_TO_EDGE);
+      this.shadowDepth=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,this.shadowDepth);gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT16,1024,1024);
+      this.shadowFramebuffer=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,this.shadowFramebuffer);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,this.shadowTexture,0);
+      gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,this.shadowDepth);
+      this.shadowsAvailable=gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE&&this.highPrecision;
+      gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+    }
+    cacheShadows(game) {
+      const gl=this.gl,b=cityBounds(game),center=[(b.left+b.right)/2,100,(b.back+b.front)/2];
+      const z=this.light.direction,x=norm(cross([0,1,0],z)),y=cross(z,x),eye=center.map((v,i)=>v+z[i]*1600);
+      const view=new Float32Array([x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-dot(x,eye),-dot(y,eye),-dot(z,eye),1]);
+      const span=900,near=1,far=3200;
+      this.lightMatrix=multiply(new Float32Array([1/span,0,0,0,0,1/span,0,0,0,0,-2/(far-near),0,0,0,-(far+near)/(far-near),1]),view);
+      if(!this.shadowsAvailable)return;
+      gl.bindTexture(gl.TEXTURE_2D,null);gl.bindFramebuffer(gl.FRAMEBUFFER,this.shadowFramebuffer);gl.viewport(0,0,1024,1024);
+      gl.clearColor(1,1,1,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.shadowProgram);
+      gl.uniformMatrix4fv(this.shadowMatrixUniform,false,this.lightMatrix);
+      gl.bindBuffer(gl.ARRAY_BUFFER,this.staticBuffer);
+      for(const loc of this.attributes)gl.disableVertexAttribArray(loc);
+      gl.enableVertexAttribArray(this.shadowPosition);gl.vertexAttribPointer(this.shadowPosition,3,gl.FLOAT,false,36,0);
+      gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(2,4);
+      gl.drawArrays(gl.TRIANGLES,0,this.staticCount);gl.disable(gl.POLYGON_OFFSET_FILL);this.shadowUpdates=(this.shadowUpdates||0)+1;this.drawCalls++;
+      gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,this.canvas.width,this.canvas.height);gl.clearColor(0,0,0,0);gl.useProgram(this.program);
+    }
+    applyLighting(game) {
+      const gl=this.gl,u=this.lightingUniforms,b=cityBounds(game),l=this.light;
+      gl.uniformMatrix4fv(u.uLightMatrix,false,this.lightMatrix);
+      for(const [name,value] of [['uSun',l.direction],['uAmbient',l.ambient],['uDirect',l.direct],['uFog',l.fog],['uCenter',[(b.left+b.right)/2,0,(b.back+b.front)/2]]])gl.uniform3fv(u[name],value);
+      gl.uniform1f(u.uShore,b.shore);
+      gl.uniform1f(u.uWindowTime,this.windowTime||0);gl.uniform1f(u.uWindowRate,l.windowRate);gl.uniform1f(u.uSeed,l.seed);
+      gl.uniform1f(u.uShadowEnabled,this.shadowsAvailable?1:0);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.shadowTexture);gl.uniform1i(u.uShadowMap,0);
     }
     countryside(m,{left,right,back,front}) {
       // Smooth low hills and farm clearings continue beyond the existing woodland ring.
@@ -387,12 +456,13 @@
         const X=b.x+x*C,Y=y*C,Z=b.z+z*C;
         const tint=((x*7+z*13+y*3+b.seed)%11===0) ? col.map(v=>v*.95) : col;
         m.box(X,Y,Z,C,C,C,tint,faces);
-        const light=(x*11+z*7+y*3+b.seed)%13<3, window=light?((y+b.seed)%3?'#e9c68e':'#f3dfb2'):'#54727c';
+        // Length-two normals mark windows; the shader varies occupancy without rebuilding the city.
+        const window=[(x+.5)/b.nx,(y+.5)/b.ny,((b.seed+z*313)%100003)/100003];
         const yy=Y+2,top=Y+6;
-        if(faces[0]&&z===b.nz-1)m.quad([X+2,yy,Z+C+.03],[X+5,yy,Z+C+.03],[X+5,top,Z+C+.03],[X+2,top,Z+C+.03],window,light?[0,0,0]:[0,0,1]);
-        if(faces[1]&&z===0)m.quad([X+5,yy,Z-.03],[X+2,yy,Z-.03],[X+2,top,Z-.03],[X+5,top,Z-.03],window,light?[0,0,0]:[0,0,-1]);
-        if(faces[2]&&x===b.nx-1)m.quad([X+C+.03,yy,Z+2],[X+C+.03,yy,Z+5],[X+C+.03,top,Z+5],[X+C+.03,top,Z+2],window,light?[0,0,0]:[1,0,0]);
-        if(faces[3]&&x===0)m.quad([X-.03,yy,Z+5],[X-.03,yy,Z+2],[X-.03,top,Z+2],[X-.03,top,Z+5],window,light?[0,0,0]:[-1,0,0]);
+        if(faces[0]&&z===b.nz-1)m.quad([X+2,yy,Z+C+.03],[X+5,yy,Z+C+.03],[X+5,top,Z+C+.03],[X+2,top,Z+C+.03],window,[0,0,2]);
+        if(faces[1]&&z===0)m.quad([X+5,yy,Z-.03],[X+2,yy,Z-.03],[X+2,top,Z-.03],[X+5,top,Z-.03],window,[0,0,-2]);
+        if(faces[2]&&x===b.nx-1)m.quad([X+C+.03,yy,Z+2],[X+C+.03,yy,Z+5],[X+C+.03,top,Z+5],[X+C+.03,top,Z+2],window,[2,0,0]);
+        if(faces[3]&&x===0)m.quad([X-.03,yy,Z+5],[X-.03,yy,Z+2],[X-.03,top,Z+2],[X-.03,top,Z+5],window,[-2,0,0]);
         if(faces[4]&&y===b.ny-1)m.box(X,Y+C+.04,Z,C,.3,C,'#c3c4ad',[false,false,false,false,true,false]);
       }
       // Roof details sit only on intact roof voxels, including after explosions.
@@ -400,7 +470,7 @@
       if(b.player===undefined && occupied(b,b.nx-2,b.ny-1,b.nz-2)) m.box(b.x+b.width-12,b.height,b.z+b.depth-12,1,16,1,'#526960');
     }
     sun(m,game,eye,time,reduced) {
-      const centre=[SUN.x,SUN.y,SUN.z],f=norm(eye.map((v,i)=>v-centre[i]));
+      const centre=[this.light.sun.x,this.light.sun.y,this.light.sun.z],f=norm(eye.map((v,i)=>v-centre[i]));
       const right=norm(cross([0,1,0],f)),up=cross(f,right);
       const point=(x,y,z)=>centre.map((v,i)=>v+right[i]*x+up[i]*y+f[i]*z);
       m.sphere(...centre,SUN.radius,game.sunHit?'#fff5b0':'#ffda83',true);
@@ -502,6 +572,7 @@
       gl.enable(gl.SCISSOR_TEST);gl.scissor(left,bottom,width,height);gl.viewport(left,bottom,width,height);
       gl.clearColor(.70,.76,.73,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.clearColor(0,0,0,0);
       gl.uniformMatrix4fv(this.uMatrix,false,matrix(clip.eye,clip.target,w/h));gl.uniform3fv(this.uEye,clip.eye);
+      gl.uniform1f(this.lightingUniforms.uShadowEnabled,impactAge<0?0:(this.shadowsAvailable?1:0));
       this.renderBuffer(impactAge<0?replay.beforeBuffer:this.staticBuffer,impactAge<0?replay.beforeCount:this.staticCount);
       this.renderBuffer(this.dynamicBuffer,this.upload(this.dynamicBuffer,mesh,gl.DYNAMIC_DRAW));
       gl.disable(gl.SCISSOR_TEST);gl.viewport(0,0,this.canvas.width,this.canvas.height);
@@ -544,13 +615,25 @@
       const ratio=Math.min(window.devicePixelRatio||1,1.75);
       if(this.canvas.width!==Math.round(width*ratio)||this.canvas.height!==Math.round(height*ratio)) { this.canvas.width=Math.round(width*ratio);this.canvas.height=Math.round(height*ratio);this.hud.width=this.canvas.width;this.hud.height=this.canvas.height; }
       this.width=width;this.height=height;this.ctx.setTransform(ratio,0,0,ratio,0,0);
-      this.clock+=paused?0:Math.max(0,Math.min(50,time-(this.lastTime??time)));this.lastTime=time;
+      const elapsed=paused?0:Math.max(0,Math.min(50,time-(this.lastTime??time)));
+      this.clock+=elapsed;this.windowTime=(this.windowTime||0)+(reduced?0:elapsed/1000);this.lastTime=time;
       const pose=this.camera.update(game,this.clock,reduced),dist=pose.distance*Math.max(1,1.45/(width/height));
       const eye=[pose.target[0]+Math.sin(pose.yaw)*Math.cos(pose.pitch)*dist,pose.target[1]+Math.sin(pose.pitch)*dist,pose.target[2]+Math.cos(pose.yaw)*Math.cos(pose.pitch)*dist];
       this.mvp=matrix(eye,pose.target,width/height);
       const gl=this.gl;gl.viewport(0,0,this.canvas.width,this.canvas.height);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);gl.uniformMatrix4fv(this.uMatrix,false,this.mvp);gl.uniform3fv(this.uEye,eye);
       this.observeReplay(game);
-      if(this.cachedGame!==game||this.revision!==game.revision) { this.staticCity(game);this.cachedGame=game;this.revision=game.revision; }
+      if(this.cachedGame!==game||this.lightRound!==game.round) {
+        this.light=daylight(game);this.lightRound=game.round;this.revision=-1;
+      }
+      if(this.cachedGame!==game||this.revision!==game.revision) { this.staticCity(game);this.cacheShadows(game);this.cachedGame=game;this.revision=game.revision; }
+      this.applyLighting(game);
+      // Match the sky to the haze at the far ground plane, including when orbiting.
+      const horizonDistance=(3500-eye[1]*Math.sin(pose.pitch))/Math.cos(pose.pitch);
+      const horizon=this.project(eye[0]-Math.sin(pose.yaw)*horizonDistance,0,eye[2]-Math.cos(pose.yaw)*horizonDistance);
+      const stop=Math.max(0,Math.min(100,horizon.y/height*100)).toFixed(1);
+      const css=c=>`rgb(${c.map(v=>Math.round(v*255)).join(',')})`;
+      const background=`linear-gradient(${css(this.light.sky)},${css(this.light.fog)} ${stop}%)`;
+      if(background!==this.skyBackground){this.canvas.style.background=background;this.skyBackground=background;}
       this.renderBuffer(this.staticBuffer,this.staticCount);
       this.drawAmbient(game,reduced);
       const m=new Mesh();
