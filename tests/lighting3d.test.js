@@ -109,12 +109,27 @@ test('Moving vehicles carry headlights, tail lights and ground glow in their cac
 
 test('Random time covers the daylight range, avoids repeating and leaves gameplay RNG untouched',()=>{
  const game=make();game.random=()=>{throw Error('gameplay RNG used');};
- game.randomizeDaylight(()=>0);assert.equal(game.dayHour,5.5);
- game.randomizeDaylight(()=>.99999);assert.equal(game.dayHour,19);
- game.randomizeDaylight(()=>.99999);assert.notEqual(game.dayHour,19);
+ game.randomizeDaylight(()=>0);assert.equal(game.dayHour,0);
+ game.randomizeDaylight(()=>.99999);assert.equal(game.dayHour,287/12);
+ game.randomizeDaylight(()=>.99999);assert.notEqual(game.dayHour,287/12);
  const saved=game.snapshot(),copy=make();assert.ok(copy.restore(saved));assert.equal(copy.dayHour,game.dayHour);
  assert.equal(copy.restore({...saved,dayHour:NaN}),false);
  assert.equal(copy.restore({...saved,dayHour:25}),false);
  assert.equal(game.setDayHour(NaN),false);
  const legacy={...saved};delete legacy.dayHour;assert.ok(copy.restore(legacy));assert.ok(Number.isFinite(copy.dayHour));
+});
+
+test('Full-day clock has a dark, illuminated night and continuous midnight lighting',()=>{
+ const game=make();
+ for(const hour of [0,3,21,287/12]){
+  game.setDayHour(hour);const light=view.daylight(game);
+  assert.equal(light.label,'Nacht');assert.ok(light.sun.y<0);
+  assert.deepEqual(light.direct,[0,0,0]);assert.equal(light.artificial,1);
+  assert.ok(light.ambient.every(v=>v>=.3));assert.ok(light.sky.every(v=>v<.1));
+  const restored=make();assert.ok(restored.restore(game.snapshot()));assert.equal(restored.dayHour,hour);
+ }
+ game.setDayHour(0);const midnight=view.daylight(game);
+ game.setDayHour(287/12);const before=view.daylight(game);
+ assert.deepEqual(before.sky,midnight.sky);assert.deepEqual(before.ambient,midnight.ambient);
+ game.setDayHour(12);assert.ok(view.daylight(game).direct.every(v=>v>0));
 });

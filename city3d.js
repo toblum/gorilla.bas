@@ -509,6 +509,7 @@
       if(b.player===undefined && occupied(b,b.nx-2,b.ny-1,b.nz-2)) m.box(b.x+b.width-12,b.height,b.z+b.depth-12,1,16,1,'#526960');
     }
     sun(m,game,eye,time,reduced) {
+      if(this.light.sun.y<=0)return;
       const centre=[this.light.sun.x,this.light.sun.y,this.light.sun.z],f=norm(eye.map((v,i)=>v-centre[i]));
       const right=norm(cross([0,1,0],f)),up=cross(f,right);
       const point=(x,y,z)=>centre.map((v,i)=>v+right[i]*x+up[i]*y+f[i]*z);
