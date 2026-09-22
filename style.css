@@ -213,3 +213,7 @@ footer{font-size:13px;letter-spacing:0;color:#2f3532}
 #classic-input{border:1px solid var(--ink);background:var(--paper);color:var(--ink);padding:10px;width:110px;min-width:0;font-size:20px}
 #classic-submit{min-height:44px}
 @media(max-width:640px){.mode-select{grid-template-columns:1fr}.mode-select label>span{height:86px;min-height:0}.mode-select b{display:flex;gap:10px;align-items:center}.mode-select em{margin-top:3px}#classic-controls{padding:14px}#classic-form{gap:10px}#classic-label{flex-basis:100%}#classic-game{min-height:0}}
+
+.daylight-control{display:flex;flex-direction:column;gap:3px;width:190px;max-width:100%;padding:6px 8px;background:#263f47ed;color:#f3e9cc;font-size:10px}
+.daylight-control>span{display:flex;justify-content:space-between;gap:10px}
+.daylight-control input{width:100%;min-width:0;margin:0;height:24px;accent-color:#ffcc83;cursor:pointer}

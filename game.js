@@ -31,6 +31,7 @@
       started = mode !== 'classic' && saved.screen !== 'welcome'; savedInputs = saved.inputs; savedFinaleAge = saved.finaleAge || 0;
       sound.enabled = saved.sound !== false;
       savedCamera = saved.camera;
+      if(mode==='3d')game.randomizeDaylight();
     }
   } catch { /* Storage may be unavailable or an older save invalid. */ }
   function saveSession() {
@@ -84,6 +85,18 @@
   $('camera-player').addEventListener('click', () => renderer3d?.playerCamera(game));
   $('camera-in').addEventListener('click', () => renderer3d?.zoom(.85));
   $('camera-out').addEventListener('click', () => renderer3d?.zoom(1.15));
+  function syncDaylight() {
+    const minutes=Math.round((game.dayHour??window.Gorillas3D.sunPosition(game).hour)*60);
+    const label=String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0');
+    if($('daylight-label').textContent!==label){
+      $('daylight-label').textContent=label;$('daylight-time').value=String(minutes);
+      $('daylight-time').setAttribute('aria-valuetext',label+' Uhr');
+    }
+  }
+  $('daylight-time').addEventListener('input',()=>{
+    if(mode!=='3d')return;
+    game.setDayHour($('daylight-time').valueAsNumber/60);syncDaylight();saveSession();
+  });
   function returnToWelcome() {
     sound.stop(); $('finale').close(); finale = null; savedFinaleAge = 0;
     started = false; game.reset(); drawnTerrain = -1; previousPhase = game.phase;
@@ -190,6 +203,7 @@
   }
   function draw(time) {
     if (mode === '3d') {
+      syncDaylight();
       renderer3d?.draw(game, time, { angle: $('angle').valueAsNumber, power: $('power').valueAsNumber, direction: $('direction').valueAsNumber }, reducedMotion, $('settings').open || document.hidden || Boolean(finale));
     } else if (mode !== 'classic') {
     ctx.imageSmoothingEnabled = false;

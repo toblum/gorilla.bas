@@ -661,10 +661,14 @@
       this.mvp=matrix(eye,pose.target,width/height);
       const gl=this.gl;gl.viewport(0,0,this.canvas.width,this.canvas.height);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);gl.uniformMatrix4fv(this.uMatrix,false,this.mvp);gl.uniform3fv(this.uEye,eye);
       this.observeReplay(game);
-      if(this.cachedGame!==game||this.lightRound!==game.round) {
-        this.light=daylight(game);this.lightRound=game.round;this.revision=-1;
+      const lightingChanged=this.cachedGame!==game||this.lightRound!==game.round||this.lightHour!==game.dayHour;
+      if(lightingChanged) {
+        this.light=daylight(game);this.lightRound=game.round;this.lightHour=game.dayHour;
       }
-      if(this.cachedGame!==game||this.revision!==game.revision) { this.staticCity(game);this.cacheShadows(game);this.cachedGame=game;this.revision=game.revision; }
+      const cityChanged=this.cachedGame!==game||this.revision!==game.revision;
+      if(cityChanged)this.staticCity(game);
+      if(cityChanged||lightingChanged)this.cacheShadows(game);
+      this.cachedGame=game;this.revision=game.revision;
       this.applyLighting(game);
       // Match the sky to the haze at the far ground plane, including when orbiting.
       const horizonDistance=(3500-eye[1]*Math.sin(pose.pitch))/Math.cos(pose.pitch);

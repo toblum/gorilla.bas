@@ -7,12 +7,12 @@
   <meta name="description" content="Zwei Gorillas, eine Skyline und explosive Bananen. Der lokale Retro-Klassiker für zwei – direkt im Browser.">
   <title>GORILLAS — Das Duell über den Dächern</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=1.4.0">
+  <link rel="stylesheet" href="style.css?v=1.4.5">
   <link rel="stylesheet" href="start-dialog.css?v=1.4.0">
   <script src="engine.js?v=1.4.0" defer></script>
-  <script src="engine3d.js?v=1.4.3" defer></script>
-  <script src="view3d.js?v=1.4.4" defer></script>
-  <script src="city3d.js?v=1.4.4" defer></script>
+  <script src="engine3d.js?v=1.4.5" defer></script>
+  <script src="view3d.js?v=1.4.5" defer></script>
+  <script src="city3d.js?v=1.4.5" defer></script>
   <script src="sound.js?v=1.4.0" defer></script>
   <script src="visuals.js?v=1.4.0" defer></script>
   <script src="scenery.js?v=1.4.0" defer></script>
@@ -22,7 +22,7 @@
   <script src="classic-sound.js?v=1.4.0" defer></script>
   <script src="classic-ui.js?v=1.4.0" defer></script>
   <script src="welcome.js?v=1.4.0" defer></script>
-  <script src="game.js?v=1.4.0" defer></script>
+  <script src="game.js?v=1.4.5" defer></script>
 </head>
 <body>
   <main class="page">
@@ -44,6 +44,7 @@
         <canvas id="game3d" width="1200" height="720" tabindex="0" hidden role="img" aria-label="Dreidimensionale Stadt. Links ziehen dreht, rechts ziehen oder Shift und Ziehen verschiebt die Kamera, Mausrad zoomt. I J K L verschieben, A und D drehen, Plus und Minus zoomen, Pos1 zeigt die Übersicht."></canvas>
         <canvas id="hud3d" width="1200" height="720" hidden aria-hidden="true"></canvas>
         <div class="view-tools" id="view-tools" hidden>
+          <label class="daylight-control" for="daylight-time"><span>UHRZEIT <output id="daylight-label" for="daylight-time">12:00</output></span><input id="daylight-time" type="range" min="330" max="1140" step="5" value="720" aria-label="Uhrzeit und Beleuchtung"></label>
           <span class="view-status" id="view-status">3D · LINKS DREHEN · RECHTS VERSCHIEBEN</span>
           <div><button type="button" id="camera-overview" title="Kamera zurücksetzen">Übersicht</button><button type="button" id="camera-player" title="Blick vom aktiven Gorilla über die Stadt">Am Wurf</button><button type="button" id="camera-in" aria-label="Kamera vergrößern">+</button><button type="button" id="camera-out" aria-label="Kamera verkleinern">−</button></div>
         </div>

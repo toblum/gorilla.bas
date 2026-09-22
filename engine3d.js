@@ -23,10 +23,10 @@
     const xs = game.plots.map(p => p.x), zs = game.plots.map(p => p.z);
     return { left: Math.min(...xs) - 36, right: Math.max(...xs) + 108, back: Math.min(...zs) - 36, front: Math.max(...zs) + 108, shore: Math.max(...zs) + 135 };
   }
-  // Stable across reloads; no gameplay RNG is consumed for the time of day.
+  // Shared by rendering and collision; older saves retain their derived sun position.
   function sunPosition(game) {
     const hours=[15,6,12,18.5,9], index=((game.round-1)%hours.length+hours.length)%hours.length;
-    const hour=hours[index]+((game.plots[0]?.seed||0)%101/100-.5)*.6;
+    const hour=Number.isFinite(game.dayHour)?game.dayHour:hours[index]+((game.plots[0]?.seed||0)%101/100-.5)*.6;
     const t=Math.max(.025,Math.min(.975,(hour-5.5)/13.5)),a=t*Math.PI;
     const bounds=cityBounds(game);
     return {x:-Math.cos(a)*680,y:65+Math.sin(a)*620,z:(bounds.back+bounds.front)/2-Math.cos(a)*850,radius:SUN.radius,hour};
@@ -58,7 +58,19 @@
       super.reset(options);
       this.options.replay = options.replay !== false;
     }
+    setDayHour(hour) {
+      if(!Number.isFinite(hour))return false;
+      this.dayHour=Math.max(5.5,Math.min(19,hour));return true;
+    }
+    randomizeDaylight(random=Math.random) {
+      // Separate from the gameplay RNG; reroll on rounds and browser reloads.
+      const previous=Math.round(this.dayHour*12),sample=Math.max(0,Math.min(.999999,random()));
+      let slot=66+Math.floor(sample*163);
+      if(slot===previous)slot=66+(slot-66+1)%163;
+      this.dayHour=slot/12;
+    }
     newRound() {
+      this.randomizeDaylight();
       this.round++; this.phase = 'aiming'; this.shot = null; this.impact = null; this.winner = null;
       this.sunHit = false; this.lastEvent = 'start'; this.celebrationAge = 0; this.craters = []; this.buildings = []; this.plots = [];
       this.mode = '3d'; this.revision = (this.revision || 0) + 1;
@@ -162,12 +174,13 @@
       if (this.shot && this.phase === 'flying') { this.shot.trail.push({ x: this.shot.x, y: this.shot.y, z: this.shot.z }); if (this.shot.trail.length > 32) this.shot.trail.shift(); }
     }
     snapshot() {
-      const state = super.snapshot(); state.version = 3;
+      const state = super.snapshot(); state.version = 3;state.dayHour=this.dayHour;
       state.buildings = this.buildings.map(b => ({ ...b, removed: [...b.removed] }));
       return state;
     }
     restore(state) {
       if (!state || state.version !== 3 || state.mode !== '3d' || !phases.includes(state.phase)) return false;
+      if(state.dayHour!==undefined&&(!Number.isFinite(state.dayHour)||state.dayHour<5.5||state.dayHour>19))return false;
       const finite = (o, keys) => o && keys.every(k => Number.isFinite(o[k]));
       if (!state.options || !Array.isArray(state.options.names) || state.options.names.length !== 2 || !state.options.names.every(n => typeof n === 'string') || !finite(state.options, ['gravity', 'target']) || state.options.gravity < .5 || state.options.gravity > 30 || !Number.isInteger(state.options.target) || state.options.target < 1 || state.options.target > 99) return false;
       if (!Array.isArray(state.scores) || state.scores.length !== 2 || !state.scores.every(n => Number.isInteger(n) && n >= 0) || ![0, 1].includes(state.turn) || ![null, 0, 1].includes(state.winner) || !finite(state, ['wind', 'windZ', 'round', 'celebrationAge', 'revision'])) return false;
@@ -180,6 +193,8 @@
       if (state.impact && (!finite(state.impact, ['x', 'y', 'z', 'radius', 'age']) || !['gorilla', 'building'].includes(state.impact.type) || (state.impact.type === 'gorilla' && ![0, 1].includes(state.impact.player)))) return false;
       const copy = JSON.parse(JSON.stringify(state));
       for (const key of ['options', 'scores', 'turn', 'round', 'lastShots', 'phase', 'shot', 'impact', 'winner', 'sunHit', 'lastEvent', 'celebrationAge', 'buildings', 'gorillas', 'wind', 'windZ', 'plots', 'craters', 'revision']) this[key] = copy[key];
+      this.dayHour=copy.dayHour;
+      if(this.dayHour===undefined)this.dayHour=sunPosition(this).hour;
       this.buildings.forEach(b => { b.removed = new Set(b.removed); }); this.mode = '3d';
       this.options.replay = this.options.replay !== false;
       this.gorillas.forEach((g, player) => { if (!Number.isFinite(g.heading)) g.heading = this.opponentHeading(player); });

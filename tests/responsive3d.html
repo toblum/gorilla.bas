@@ -6,7 +6,7 @@ sessionStorage.setItem('gorillas-session-v1',JSON.stringify({mode:'3d',game:g.sn
 let count=0;for(const width of [320,390]){
  const frame=document.createElement('iframe');frame.width=width;frame.height=1080;frame.src='../index.html';document.querySelector('#frames').append(frame);
  frame.addEventListener('load',()=>{if(++count===2)requestAnimationFrame(()=>{
- document.querySelector('#report').textContent=JSON.stringify([...document.querySelectorAll('iframe')].map(f=>{const d=f.contentDocument;return{width:f.contentWindow.innerWidth,documentWidth:d.documentElement.scrollWidth,formWidth:Math.round(d.querySelector('#shot-form').getBoundingClientRect().width),directionVisible:!d.querySelector('#direction-field').hidden,throwEnabled:!d.querySelector('#throw').disabled};}),null,2);
+ document.querySelector('#report').textContent=JSON.stringify([...document.querySelectorAll('iframe')].map(f=>{const d=f.contentDocument;return{width:f.contentWindow.innerWidth,documentWidth:d.documentElement.scrollWidth,formWidth:Math.round(d.querySelector('#shot-form').getBoundingClientRect().width),timeSliderWidth:Math.round(d.querySelector('#daylight-time').getBoundingClientRect().width),directionVisible:!d.querySelector('#direction-field').hidden,throwEnabled:!d.querySelector('#throw').disabled};}),null,2);
  });});
 }
 </script></html>

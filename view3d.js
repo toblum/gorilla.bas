@@ -8,13 +8,13 @@
   function daylight(game) {
     const sun=spatial.sunPosition(game),bounds=spatial.cityBounds(game),z=(bounds.back+bounds.front)/2;
     const direction=[sun.x,sun.y,sun.z-z],length=Math.hypot(...direction);
-    const warmth=clamp(Math.abs(sun.hour-12)/6.5,0,1),dusk=sun.hour>17||sun.hour<7;
+    const warmth=clamp(Math.abs(sun.hour-12)/6.5,0,1),artificial=clamp((warmth-.55)/.3,0,1);
     const mix=(a,b)=>a.map((n,i)=>n+(b[i]-n)*warmth);
     return {sun,direction:direction.map(v=>v/length),
-      ambient:mix([.58,.62,.67],[.48,.46,.53]),direct:mix([.48,.45,.39],[.55,.30,.15]),
-      artificial:clamp((warmth-.55)/.3,0,1),
+      ambient:mix([.67,.69,.73],[.61,.58,.63]),direct:mix([.35,.32,.27],[.34,.21,.12]),
+      artificial,
       fog:mix([.72,.84,.88],[.83,.57,.44]),sky:mix([.34,.64,.84],[.24,.28,.48]),
-      windowRate:dusk?.58:.07+warmth*.16,seed:(game.plots[0]?.seed||0)%997,
+      windowRate:.07+.51*artificial,seed:(game.plots[0]?.seed||0)%997,
       label:sun.hour<7?'Morgengrauen':sun.hour<11?'Vormittag':sun.hour<14?'Mittag':sun.hour<17?'Nachmittag':'Sonnenuntergang'};
   }
   class CameraRig {

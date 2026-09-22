@@ -11,7 +11,7 @@ function rendererPrototype(){
 test('Daylight varies by round, survives reload and does not consume gameplay randomness',()=>{
  const game=make(),labels=new Set();
  for(let i=0;i<5;i++){
-  if(i)game.newRound();
+  if(i)game.newRound();game.setDayHour([15,6,12,18.5,9][i]);
   const before=game.snapshot(),copy=make();assert.ok(copy.restore(before));
   const random=game.random;game.random=()=>{throw Error('lighting consumed RNG');};
   const light=view.daylight(game);labels.add(light.label);
@@ -28,7 +28,7 @@ test('Daylight varies by round, survives reload and does not consume gameplay ra
 test('The rendered sun position charges shots in all five daylight conditions after save/restore',()=>{
  const source=make();
  for(let i=0;i<5;i++){
-  if(i)source.newRound();
+  if(i)source.newRound();source.setDayHour([15,6,12,18.5,9][i]);
   const game=make();assert.ok(game.restore(source.snapshot()));
   const sun=view.daylight(game).sun;
   assert.deepEqual(sun,engine.sunPosition(game));
@@ -42,7 +42,7 @@ test('Daylight and sea-facing sunset also support 24- and 48-plot saved cities',
  for(const ring of [0,1]){
   const saved=make().snapshot();
   const inside=p=>p.x>=-270-ring*94&&p.x<294+ring*94&&p.z>=-170-ring*94&&p.z<206+ring*94;
-  saved.plots=saved.plots.filter(inside);saved.buildings=saved.buildings.filter(inside);saved.round=4;
+  saved.plots=saved.plots.filter(inside);saved.buildings=saved.buildings.filter(inside);saved.round=4;saved.dayHour=18.5;
   const game=make();assert.ok(game.restore(saved));const sun=engine.sunPosition(game);
   assert.ok([sun.x,sun.y,sun.z].every(Number.isFinite));assert.ok(sun.z>engine.cityBounds(game).shore);
  }
@@ -74,15 +74,17 @@ test('Window clock freezes on pause/reduced motion, and shadows refresh only on 
  draw(20010);assert.ok(Math.abs(renderer.windowTime-.06)<1e-9);assert.equal(shadows,1);
  game.revision++;draw(20020);assert.equal(shadows,2);
  game.newRound();draw(20030);assert.equal(shadows,3);assert.equal(builds,3);
+ game.setDayHour(6);draw(20040);assert.equal(shadows,4);assert.equal(builds,3);
+ game.setDayHour(18);draw(20050);assert.equal(shadows,5);assert.equal(builds,3);
 });
 
 test('Backlit facades retain fill light and artificial lighting follows dawn/noon/sunset',()=>{
  const game=make();
  for(let i=0;i<5;i++){
-  if(i)game.newRound();const l=view.daylight(game);
+  if(i)game.newRound();game.setDayHour([15,6,12,18.5,9][i]);const l=view.daylight(game);
   const luminance=c=>c[0]*.2126+c[1]*.7152+c[2]*.0722;
   const fill=luminance(l.ambient)*.83;
-  assert.ok((fill+luminance(l.direct))/fill<2.4,'sun-facing and shaded facades diverge too much');
+  assert.ok((fill+luminance(l.direct))/fill<1.8,'sun-facing and shaded facades diverge too much');
   if(l.label==='Mittag')assert.equal(l.artificial,0);
   if(['Morgengrauen','Sonnenuntergang'].includes(l.label))assert.ok(l.artificial>.85);
  }
@@ -103,4 +105,16 @@ test('Moving vehicles carry headlights, tail lights and ground glow in their cac
   }
   assert.ok(Array.from(mesh).every(Number.isFinite));
  }
+});
+
+test('Random time covers the daylight range, avoids repeating and leaves gameplay RNG untouched',()=>{
+ const game=make();game.random=()=>{throw Error('gameplay RNG used');};
+ game.randomizeDaylight(()=>0);assert.equal(game.dayHour,5.5);
+ game.randomizeDaylight(()=>.99999);assert.equal(game.dayHour,19);
+ game.randomizeDaylight(()=>.99999);assert.notEqual(game.dayHour,19);
+ const saved=game.snapshot(),copy=make();assert.ok(copy.restore(saved));assert.equal(copy.dayHour,game.dayHour);
+ assert.equal(copy.restore({...saved,dayHour:NaN}),false);
+ assert.equal(copy.restore({...saved,dayHour:25}),false);
+ assert.equal(game.setDayHour(NaN),false);
+ const legacy={...saved};delete legacy.dayHour;assert.ok(copy.restore(legacy));assert.ok(Number.isFinite(copy.dayHour));
 });
