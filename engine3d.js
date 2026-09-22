@@ -63,10 +63,10 @@
       this.dayHour=Math.max(0,Math.min(287/12,hour));return true;
     }
     randomizeDaylight(random=Math.random) {
-      // Separate from the gameplay RNG; reroll on rounds and browser reloads.
+      // Separate from gameplay RNG; new rounds choose daylight, manual selection allows night.
       const previous=Math.round(this.dayHour*12),sample=Math.max(0,Math.min(.999999,random()));
-      let slot=Math.floor(sample*288);
-      if(slot===previous)slot=(slot+1)%288;
+      let slot=66+Math.floor(sample*163);
+      if(slot===previous)slot=66+(slot-66+1)%163;
       this.dayHour=slot/12;
     }
     newRound() {

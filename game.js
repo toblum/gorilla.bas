@@ -31,7 +31,6 @@
       started = mode !== 'classic' && saved.screen !== 'welcome'; savedInputs = saved.inputs; savedFinaleAge = saved.finaleAge || 0;
       sound.enabled = saved.sound !== false;
       savedCamera = saved.camera;
-      if(mode==='3d')game.randomizeDaylight();
     }
   } catch { /* Storage may be unavailable or an older save invalid. */ }
   function saveSession() {

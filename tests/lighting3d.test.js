@@ -109,9 +109,9 @@ test('Moving vehicles carry headlights, tail lights and ground glow in their cac
 
 test('Random time covers the daylight range, avoids repeating and leaves gameplay RNG untouched',()=>{
  const game=make();game.random=()=>{throw Error('gameplay RNG used');};
- game.randomizeDaylight(()=>0);assert.equal(game.dayHour,0);
- game.randomizeDaylight(()=>.99999);assert.equal(game.dayHour,287/12);
- game.randomizeDaylight(()=>.99999);assert.notEqual(game.dayHour,287/12);
+ game.randomizeDaylight(()=>0);assert.equal(game.dayHour,5.5);
+ game.randomizeDaylight(()=>.99999);assert.equal(game.dayHour,19);
+ game.randomizeDaylight(()=>.99999);assert.notEqual(game.dayHour,19);
  const saved=game.snapshot(),copy=make();assert.ok(copy.restore(saved));assert.equal(copy.dayHour,game.dayHour);
  assert.equal(copy.restore({...saved,dayHour:NaN}),false);
  assert.equal(copy.restore({...saved,dayHour:25}),false);
@@ -132,4 +132,12 @@ test('Full-day clock has a dark, illuminated night and continuous midnight light
  game.setDayHour(287/12);const before=view.daylight(game);
  assert.deepEqual(before.sky,midnight.sky);assert.deepEqual(before.ambient,midnight.ambient);
  game.setDayHour(12);assert.ok(view.daylight(game).direct.every(v=>v>0));
+});
+
+test('Only new rounds reroll daylight; restoring a manually selected night preserves the clock',()=>{
+ const game=make();game.setDayHour(23.5);const saved=game.snapshot();
+ const restored=make();assert.ok(restored.restore(saved));assert.equal(restored.dayHour,23.5);
+ for(let i=0;i<100;i++){
+  restored.newRound();assert.ok(restored.dayHour>=5.5&&restored.dayHour<=19);
+ }
 });
