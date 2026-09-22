@@ -49,7 +49,7 @@ test('Renderer reuses a bounded GPU batch; pause, reduced motion and damage do n
  Object.assign(renderer,{clock:0,gl:{bindBuffer(){},bufferData(){allocations++;},bufferSubData(){uploads++;}},renderBuffer(){draws++;}});
  const game=make();renderer.drawAmbient(game,false);
  assert.equal(allocations,1);assert.equal(uploads,1);assert.equal(draws,1);
- assert.ok(renderer.ambientData.length/27<2200,'triangle budget exceeded');
+ assert.ok(renderer.ambientData.length/27<3000,'triangle budget exceeded');
  const data=renderer.ambientData;const first=Array.from(data);
  renderer.clock=50;renderer.drawAmbient(game,false);assert.notDeepEqual(Array.from(data),first);
  const moved=Array.from(data);renderer.drawAmbient(game,false);assert.equal(uploads,2);

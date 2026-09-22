@@ -51,7 +51,7 @@ test('Window identities are uniform across each pane, distinct and disappear wit
  const renderer=Object.create(rendererPrototype()),b=make().buildings[0];
  const collect=()=>{
   const panes=[];
-  const mesh={box(){},quad(...args){const normal=args[5];if(Math.hypot(...normal)===2)panes.push({points:args.slice(0,4),id:args[4],normal});}};
+  const mesh={box(){},lamp(){},lightPool(){},quad(...args){const normal=args[5];if(Math.hypot(...normal)===2)panes.push({points:args.slice(0,4),id:args[4],normal});}};
   renderer.building(mesh,b);return panes;
  };
  const before=collect();assert.ok(before.length>100);
@@ -74,4 +74,33 @@ test('Window clock freezes on pause/reduced motion, and shadows refresh only on 
  draw(20010);assert.ok(Math.abs(renderer.windowTime-.06)<1e-9);assert.equal(shadows,1);
  game.revision++;draw(20020);assert.equal(shadows,2);
  game.newRound();draw(20030);assert.equal(shadows,3);assert.equal(builds,3);
+});
+
+test('Backlit facades retain fill light and artificial lighting follows dawn/noon/sunset',()=>{
+ const game=make();
+ for(let i=0;i<5;i++){
+  if(i)game.newRound();const l=view.daylight(game);
+  const luminance=c=>c[0]*.2126+c[1]*.7152+c[2]*.0722;
+  const fill=luminance(l.ambient)*.83;
+  assert.ok((fill+luminance(l.direct))/fill<2.4,'sun-facing and shaded facades diverge too much');
+  if(l.label==='Mittag')assert.equal(l.artificial,0);
+  if(['Morgengrauen','Sonnenuntergang'].includes(l.label))assert.ok(l.artificial>.85);
+ }
+});
+test('Moving vehicles carry headlights, tail lights and ground glow in their cached mesh',()=>{
+ const r=Object.create(rendererPrototype());
+ for(const kind of ['car','taxi','bus','boat','sailboat']){
+  const mesh=r.ambientModel(kind),lights=[],pools=[];
+  for(let i=0;i<mesh.length;i+=9){
+   const n=Math.hypot(mesh[i+3],mesh[i+4],mesh[i+5]);
+   if(n>4.5)lights.push(Array.from(mesh.slice(i,i+9)));
+   if(n>=3&&n<=4)pools.push(i);
+  }
+  assert.ok(lights.length>0,kind+' lacks lamps');
+  if(['car','taxi','bus'].includes(kind)){
+   assert.ok(lights.some(v=>v[2]>0)&&lights.some(v=>v[2]<0));
+   assert.ok(pools.length>0);
+  }
+  assert.ok(Array.from(mesh).every(Number.isFinite));
+ }
 });

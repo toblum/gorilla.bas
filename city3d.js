@@ -29,6 +29,19 @@
       const points=[a,b,c,d];
       for (const i of [0,1,2,0,2,3]) this.data.push(...points[i], ...(Array.isArray(n[0])?n[i]:n), ...(Array.isArray(col[0])?col[i]:col));
     }
+    lamp(x,y,z,w,h,d,color) {
+      const start=this.data.length;this.box(x,y,z,w,h,d,color);
+      // Length-five normals identify lamps; they become emissive only at dusk.
+      for(let i=start;i<this.data.length;i+=9)for(let j=3;j<6;j++)this.data[i+j]*=5;
+    }
+    lightPool(x,y,z,rx,rz) {
+      // Interpolated normal length encodes opacity; one small translucent fan.
+      for(let i=0;i<12;i++) {
+        const a=i*Math.PI/6,b=(i+1)*Math.PI/6;
+        this.quad([x,y,z],[x+Math.cos(a)*rx,y,z+Math.sin(a)*rz],[x+Math.cos(b)*rx,y,z+Math.sin(b)*rz],[x,y,z],
+          '#ffd596',[[0,4,0],[0,3,0],[0,3,0],[0,4,0]]);
+      }
+    }
     appendRotated(mesh, origin, heading, scale = 1) {
       const co = Math.sin(heading), si = Math.cos(heading);
       for (let i = 0; i < mesh.data.length; i += 9) {
@@ -76,7 +89,7 @@
       const fs = shader(gl.FRAGMENT_SHADER, `
         precision highp float;
         uniform vec3 uSun,uAmbient,uDirect,uFog,uCenter,uEye;
-        uniform float uWindowTime,uWindowRate,uSeed,uShadowEnabled,uShore;
+        uniform float uWindowTime,uWindowRate,uSeed,uShadowEnabled,uShore,uArtificial;
         uniform sampler2D uShadowMap;
         varying vec3 vWorld,vNormal,vColor; varying vec4 vShadow;
         float hash(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
@@ -93,10 +106,15 @@
         }
         void main(){
           float size=length(vNormal);vec3 n=size>.1?vNormal/size:vec3(0.0);
+          if(size>2.5&&size<4.5){
+            float fog=smoothstep(850.0,2600.0,length(vWorld.xz-uCenter.xz));
+            gl_FragColor=vec4(vColor,.32*uArtificial*(size-3.0)*(1.0-fog));return;
+          }
           float sun=max(0.0,dot(n,uSun));
           vec3 light=uAmbient*(.83+.17*n.y)+uDirect*sun*visibility(n);
           vec3 color=vColor*(size<.1?vec3(1.05):light);
-          if(size>1.5){
+          if(size>4.5)color=mix(vColor*light,vColor*1.15,uArtificial);
+          if(size>1.5&&size<2.5){
             vec3 cell=vColor*179.0+n*137.0+uSeed;
             float id=hash(cell),period=28.0+hash(cell+17.0)*62.0;
             float t=(uWindowTime+id*period)/period,slot=floor(t);
@@ -117,10 +135,10 @@
       gl.deleteShader(vs); gl.deleteShader(fs); gl.useProgram(this.program);
       this.attributes = ['aPosition', 'aNormal', 'aColor'].map(n => gl.getAttribLocation(this.program, n));
       this.uMatrix = gl.getUniformLocation(this.program, 'uMatrix'); this.uEye = gl.getUniformLocation(this.program, 'uEye');
-      this.lightingUniforms=Object.fromEntries(['uLightMatrix','uSun','uAmbient','uDirect','uFog','uCenter','uWindowTime','uWindowRate','uSeed','uShadowEnabled','uShadowMap','uShore'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
+      this.lightingUniforms=Object.fromEntries(['uLightMatrix','uSun','uAmbient','uDirect','uFog','uCenter','uWindowTime','uWindowRate','uSeed','uShadowEnabled','uShadowMap','uShore','uArtificial'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
       this.initShadows(shader);
       this.staticBuffer = gl.createBuffer(); this.dynamicBuffer = gl.createBuffer(); this.ambientBuffer = gl.createBuffer();
-      gl.enable(gl.DEPTH_TEST); gl.clearColor(0,0,0,0);
+      gl.enable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA); gl.clearColor(0,0,0,0);
       this.camera = new CameraRig(); this.clock = 0; this.cachedGame = null; this.revision = -1; this.lost = false;
       this.replayPanel = document.createElement('section');
       this.replayPanel.className = 'replay-panel'; this.replayPanel.hidden = true;
@@ -220,7 +238,7 @@
       const gl=this.gl,u=this.lightingUniforms,b=cityBounds(game),l=this.light;
       gl.uniformMatrix4fv(u.uLightMatrix,false,this.lightMatrix);
       for(const [name,value] of [['uSun',l.direction],['uAmbient',l.ambient],['uDirect',l.direct],['uFog',l.fog],['uCenter',[(b.left+b.right)/2,0,(b.back+b.front)/2]]])gl.uniform3fv(u[name],value);
-      gl.uniform1f(u.uShore,b.shore);
+      gl.uniform1f(u.uShore,b.shore);gl.uniform1f(u.uArtificial,l.artificial);
       gl.uniform1f(u.uWindowTime,this.windowTime||0);gl.uniform1f(u.uWindowRate,l.windowRate);gl.uniform1f(u.uSeed,l.seed);
       gl.uniform1f(u.uShadowEnabled,this.shadowsAvailable?1:0);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.shadowTexture);gl.uniform1i(u.uShadowMap,0);
     }
@@ -368,7 +386,16 @@
         this.tree(m,x,front+17,.6);
         m.box(x+12,4,front+7,10,2.5,3,'#8a7257');m.box(x+12,6.5,front+9,10,4,1,'#8a7257');
       }
-      for(const x of columns){m.box(x-14,3,back+12,1,23,1,'#546965');m.box(x-15,26,back+11,6,1.5,3,'#ffe1a2');}
+      const lamp=(x,z,ground)=>{
+        m.box(x,ground,z,1,23,1,'#546965');
+        m.lamp(x-2,ground+23,z-1,5,1.5,3,'#ffe1a2');
+        m.lightPool(x,ground+.04,z,15,21);
+      };
+      for(const x of columns){
+        lamp(x-14,back+12,1);
+        for(const z of rows.filter((_,i)=>i%2===1))lamp(x+80,z+30,1);
+        lamp(x+15,front+22,4);
+      }
       for(let i=0;i<7;i++) {
         const x=left+65+i*63,z=shore+17+(i%2)*13;
         m.box(x-5,.1,z-4,10,.2,17,i%2?'#d59373':'#8baeb0');
@@ -393,8 +420,12 @@
         m.box(-2.7,bus?5:4,-length/2+3,5.4,3,length-6,glass);
         m.box(-3,bus?8:7,-length/2+2,6,1,length-4,color);
         for(const x of [-3.5,2.5])for(const z of [-length/2+2,length/2-4])m.box(x,0,z,1,2.5,2,dark);
-        for(const x of [-2.5,1.5])m.box(x,2,length/2+.05,1,1,.2,'#f9e3b2');
-        if(kind==='taxi')m.box(-1,8,-1,2,1.2,2,'#f9e3b2');
+        for(const x of [-2.5,1.5]){
+          m.lamp(x,2,length/2+.05,1,1,.2,'#fff0bd');
+          m.lamp(x,2,-length/2-.25,1,1,.2,'#ed6048');
+        }
+        m.lightPool(0,.12,length/2+10,5,12);
+        if(kind==='taxi')m.lamp(-1,8,-1,2,1.2,2,'#f9e3b2');
       } else if(kind==='boat'||kind==='sailboat') {
         m.box(-5,0,-11,10,3,22,'#e8d9b8');m.box(-3,3,-6,6,4,9,'#8aada6');
         m.quad([-5,0,11],[5,0,11],[0,2,18],[0,2,18],'#e8d9b8');
@@ -403,6 +434,7 @@
           m.quad([1,35,0],[1,8,0],[1,8,17],[1,35,0],'#fff0cd');
           m.quad([0,30,0],[0,8,-12],[0,8,0],[0,30,0],'#d3a27c');
         } else {m.box(-3,7,-7,6,1,11,'#eedec0');m.box(-2.7,4,3.1,5.4,2,.2,glass);}
+        m.lamp(-5,5,0,1,1,2,'#ed6048');m.lamp(4,5,0,1,1,2,'#b5e8bb');
         // Small wake stays attached to the hull; no particles or water simulation.
         for(const x of [-4,4])m.line([x,.2,-12],[x*2,.2,-30],1,'#c3d6c9');
       } else if(kind==='walker') {
@@ -464,6 +496,13 @@
         if(faces[2]&&x===b.nx-1)m.quad([X+C+.03,yy,Z+2],[X+C+.03,yy,Z+5],[X+C+.03,top,Z+5],[X+C+.03,top,Z+2],window,[2,0,0]);
         if(faces[3]&&x===0)m.quad([X-.03,yy,Z+5],[X-.03,yy,Z+2],[X-.03,top,Z+2],[X-.03,top,Z+5],window,[-2,0,0]);
         if(faces[4]&&y===b.ny-1)m.box(X,Y+C+.04,Z,C,.3,C,'#c3c4ad',[false,false,false,false,true,false]);
+      }
+      // Entry lights and a small wash remain attached to intact ground-floor cells.
+      const entry=Math.floor(b.nx/2);
+      if(occupied(b,entry,0,b.nz-1)) {
+        const x=b.x+(entry+.5)*C,z=b.z+b.depth;
+        m.lamp(x-1,5,z+.08,2,1.5,.6,'#ffd59b');
+        m.lightPool(x,3.04,z+2,7,2);
       }
       // Roof details sit only on intact roof voxels, including after explosions.
       if(occupied(b,1,b.ny-1,1)) { m.box(b.x+9,b.height+1,b.z+9,6,4,6,'#80928b');m.box(b.x+9,b.height+5,b.z+9,6,1,6,'#b4bca8'); }

@@ -11,7 +11,8 @@
     const warmth=clamp(Math.abs(sun.hour-12)/6.5,0,1),dusk=sun.hour>17||sun.hour<7;
     const mix=(a,b)=>a.map((n,i)=>n+(b[i]-n)*warmth);
     return {sun,direction:direction.map(v=>v/length),
-      ambient:mix([.48,.55,.63],[.27,.30,.43]),direct:mix([.58,.55,.48],[.85,.43,.20]),
+      ambient:mix([.58,.62,.67],[.48,.46,.53]),direct:mix([.48,.45,.39],[.55,.30,.15]),
+      artificial:clamp((warmth-.55)/.3,0,1),
       fog:mix([.72,.84,.88],[.83,.57,.44]),sky:mix([.34,.64,.84],[.24,.28,.48]),
       windowRate:dusk?.58:.07+warmth*.16,seed:(game.plots[0]?.seed||0)%997,
       label:sun.hour<7?'Morgengrauen':sun.hour<11?'Vormittag':sun.hour<14?'Mittag':sun.hour<17?'Nachmittag':'Sonnenuntergang'};
