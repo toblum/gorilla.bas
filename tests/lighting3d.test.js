@@ -66,7 +66,7 @@ test('Window clock freezes on pause/reduced motion, and shadows refresh only on 
  const renderer=Object.create(rendererPrototype()),game=make();let shadows=0,builds=0;
  const noop=()=>{},gl=new Proxy({},{get:()=>noop});
  Object.assign(renderer,{canvas:{clientWidth:1000,clientHeight:600,width:1750,height:1050,style:{}},hud:{},ctx:{setTransform:noop},gl,camera:new view.CameraRig(),clock:0,
-  staticCity(){builds++;this.windSites=[];},cacheShadows(){shadows++;},applyLighting:noop,observeReplay:noop,renderBuffer:noop,drawAmbient:noop,sun:noop,gorilla:noop,upload:noop,drawHUD:noop,drawReplay:noop});
+  staticCity(){builds++;this.windSites=[];},cacheShadows(){shadows++;},applyLighting:noop,setExplosionLight:noop,observeReplay:noop,renderBuffer:noop,drawAmbient:noop,sun:noop,gorilla:noop,upload:noop,drawHUD:noop,drawReplay:noop});
  const draw=(t,reduced=false,paused=false)=>renderer.draw(game,t,{angle:45,power:80,direction:0},reduced,paused);
  draw(0);draw(50);assert.equal(renderer.windowTime,.05);assert.equal(shadows,1);
  draw(100,true);draw(10000,true);assert.equal(renderer.windowTime,.05);
@@ -140,4 +140,21 @@ test('Only new rounds reroll daylight; restoring a manually selected night prese
  for(let i=0;i<100;i++){
   restored.newRound();assert.ok(restored.dayHour>=5.5&&restored.dayHour<=19);
  }
+});
+
+test('Residential windows wind down overnight and recover toward dawn while street lights stay on',()=>{
+ const game=make(),at=hour=>{game.setDayHour(hour);return view.daylight(game);};
+ const evening=at(21),midnight=at(0),late=at(3),dawn=at(6);
+ assert.ok(evening.windowRate>midnight.windowRate&&midnight.windowRate>late.windowRate);
+ assert.ok(late.windowRate>.05&&late.windowRate<.2);assert.ok(dawn.windowRate>late.windowRate*3);
+ assert.equal(late.artificial,1);
+ assert.ok(Math.abs(at(287/12).windowRate-at(0).windowRate)<.03);
+});
+test('Explosion illumination is local, decays to zero and is disabled for reduced motion',()=>{
+ const hit={x:0,y:30,z:0,radius:20,age:0},saved={...hit};
+ const first=view.explosionLight(hit);assert.ok(first.strength>2);assert.ok(first.radius<=220);
+ assert.ok(view.explosionLight({...hit,age:.4}).strength<first.strength);
+ for(const age of [-.1,1.2,2])assert.equal(view.explosionLight({...hit,age}).strength,0);
+ assert.equal(view.explosionLight(hit,true).strength,0);assert.equal(view.explosionLight(null).strength,0);
+ assert.deepEqual(hit,saved);
 });

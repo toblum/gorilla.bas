@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const { CELL, SUN, occupied, launchVector, cityBounds, windsockSites, windPose } = window.Gorillas3D;
-  const { CameraRig, ImpactReplay, AmbientLife, daylight } = window.GorillaView3D;
+  const { CameraRig, ImpactReplay, AmbientLife, daylight, explosionLight } = window.GorillaView3D;
   const palette = ['#678781', '#c68e77', '#c6bda3', '#587080', '#a5b5a0'];
   const playerColors = ['#fa8650', '#bce0bd'];
   const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
@@ -34,12 +34,12 @@
       // Length-five normals identify lamps; they become emissive only at dusk.
       for(let i=start;i<this.data.length;i+=9)for(let j=3;j<6;j++)this.data[i+j]*=5;
     }
-    lightPool(x,y,z,rx,rz) {
+    lightPool(x,y,z,rx,rz,color='#ffd596') {
       // Interpolated normal length encodes opacity; one small translucent fan.
       for(let i=0;i<12;i++) {
         const a=i*Math.PI/6,b=(i+1)*Math.PI/6;
         this.quad([x,y,z],[x+Math.cos(a)*rx,y,z+Math.sin(a)*rz],[x+Math.cos(b)*rx,y,z+Math.sin(b)*rz],[x,y,z],
-          '#ffd596',[[0,4,0],[0,3,0],[0,3,0],[0,4,0]]);
+          color,[[0,4,0],[0,3,0],[0,3,0],[0,4,0]]);
       }
     }
     appendRotated(mesh, origin, heading, scale = 1) {
@@ -89,6 +89,7 @@
       const fs = shader(gl.FRAGMENT_SHADER, `
         precision highp float;
         uniform vec3 uSun,uAmbient,uDirect,uFog,uCenter,uEye;
+        uniform vec4 uFlash; uniform float uFlashRadius;
         uniform float uWindowTime,uWindowRate,uSeed,uShadowEnabled,uShore,uArtificial;
         uniform sampler2D uShadowMap;
         varying vec3 vWorld,vNormal,vColor; varying vec4 vShadow;
@@ -108,12 +109,18 @@
           float size=length(vNormal);vec3 n=size>.1?vNormal/size:vec3(0.0);
           if(size>2.5&&size<4.5){
             float fog=smoothstep(850.0,2600.0,length(vWorld.xz-uCenter.xz));
-            gl_FragColor=vec4(vColor,.32*uArtificial*(size-3.0)*(1.0-fog));return;
+            gl_FragColor=vec4(vColor,.48*uArtificial*(size-3.0)*(1.0-fog));return;
           }
           float sun=max(0.0,dot(n,uSun));
           vec3 light=uAmbient*(.83+.17*n.y)+uDirect*sun*visibility(n);
+          float flash=max(0.0,1.0-distance(vWorld,uFlash.xyz)/uFlashRadius);
+          light+=vec3(1.0,.57,.20)*flash*flash*uFlash.w;
           vec3 color=vColor*(size<.1?vec3(1.05):light);
-          if(size>4.5)color=mix(vColor*light,vColor*1.15,uArtificial);
+          if(size>4.5&&size<6.5)color=mix(vColor*light,vColor*1.15,uArtificial);
+          if(size>6.5){
+            float rim=pow(1.0-abs(dot(n,normalize(uEye-vWorld))),2.0);
+            color=vColor*(light+vec3(.40,.42,.48)*uArtificial)+vColor*rim*.32*uArtificial;
+          }
           if(size>1.5&&size<2.5){
             vec3 cell=vColor*179.0+n*137.0+uSeed;
             float id=hash(cell),period=28.0+hash(cell+17.0)*62.0;
@@ -135,7 +142,7 @@
       gl.deleteShader(vs); gl.deleteShader(fs); gl.useProgram(this.program);
       this.attributes = ['aPosition', 'aNormal', 'aColor'].map(n => gl.getAttribLocation(this.program, n));
       this.uMatrix = gl.getUniformLocation(this.program, 'uMatrix'); this.uEye = gl.getUniformLocation(this.program, 'uEye');
-      this.lightingUniforms=Object.fromEntries(['uLightMatrix','uSun','uAmbient','uDirect','uFog','uCenter','uWindowTime','uWindowRate','uSeed','uShadowEnabled','uShadowMap','uShore','uArtificial'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
+      this.lightingUniforms=Object.fromEntries(['uLightMatrix','uSun','uAmbient','uDirect','uFog','uCenter','uWindowTime','uWindowRate','uSeed','uShadowEnabled','uShadowMap','uShore','uArtificial','uFlash','uFlashRadius'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
       this.initShadows(shader);
       this.staticBuffer = gl.createBuffer(); this.dynamicBuffer = gl.createBuffer(); this.ambientBuffer = gl.createBuffer();
       gl.enable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA); gl.clearColor(0,0,0,0);
@@ -241,6 +248,11 @@
       gl.uniform1f(u.uShore,b.shore);gl.uniform1f(u.uArtificial,l.artificial);
       gl.uniform1f(u.uWindowTime,this.windowTime||0);gl.uniform1f(u.uWindowRate,l.windowRate);gl.uniform1f(u.uSeed,l.seed);
       gl.uniform1f(u.uShadowEnabled,this.shadowsAvailable?1:0);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.shadowTexture);gl.uniform1i(u.uShadowMap,0);
+    }
+    setExplosionLight(hit,reduced) {
+      const flash=explosionLight(hit,reduced),u=this.lightingUniforms;
+      this.gl.uniform4f(u.uFlash,hit?.x||0,hit?.y||0,hit?.z||0,flash.strength*(this.light?.artificial||0));
+      this.gl.uniform1f(u.uFlashRadius,flash.radius);
     }
     countryside(m,{left,right,back,front}) {
       // Smooth low hills and farm clearings continue beyond the existing woodland ring.
@@ -389,7 +401,7 @@
       const lamp=(x,z,ground)=>{
         m.box(x,ground,z,1,23,1,'#546965');
         m.lamp(x-2,ground+23,z-1,5,1.5,3,'#ffe1a2');
-        m.lightPool(x,ground+.04,z,15,21);
+        m.lightPool(x,ground+.04,z,19,26);
       };
       for(const x of columns){
         lamp(x-14,back+12,1);
@@ -424,7 +436,7 @@
           m.lamp(x,2,length/2+.05,1,1,.2,'#fff0bd');
           m.lamp(x,2,-length/2-.25,1,1,.2,'#ed6048');
         }
-        m.lightPool(0,.12,length/2+10,5,12);
+        m.lightPool(0,.12,length/2+13,7,16);
         if(kind==='taxi')m.lamp(-1,8,-1,2,1.2,2,'#f9e3b2');
       } else if(kind==='boat'||kind==='sailboat') {
         m.box(-5,0,-11,10,3,22,'#e8d9b8');m.box(-3,3,-6,6,4,9,'#8aada6');
@@ -502,7 +514,19 @@
       if(occupied(b,entry,0,b.nz-1)) {
         const x=b.x+(entry+.5)*C,z=b.z+b.depth;
         m.lamp(x-1,5,z+.08,2,1.5,.6,'#ffd59b');
-        m.lightPool(x,3.04,z+2,7,2);
+        m.lightPool(x,3.04,z+2,11,3);
+        // Paired sconces frame the entrance without adding real-time point lights.
+        for(const side of [-1,1])m.lamp(x+side*5,7,z+.08,1,3,.5,'#ffd59b');
+      }
+      // A few small neon signs on intact storefronts; static, never flashing.
+      if(b.seed%5===0&&[entry-1,entry,entry+1].every(x=>occupied(b,x,1,b.nz-1)&&occupied(b,x,2,b.nz-1))) {
+        const x=b.x+(entry+.5)*C-10,z=b.z+b.depth+.15,color=b.seed%2?'#f38bad':'#70d9dc';
+        m.box(x-1,10,z,22,12,.7,'#273c48');
+        const glyphs=['110101110101110','010101111101101','110101110101101']; // BAR
+        glyphs.forEach((bits,glyph)=>{for(let row=0;row<5;row++)for(let col=0;col<3;col++)if(bits[row*3+col]==='1')
+          m.lamp(x+glyph*7+col*1.7,19-row*1.7,z+.75,1.3,1.3,.3,color);
+        });
+        m.lightPool(x+10,3.06,z+2,15,3,color);
       }
       // Roof details sit only on intact roof voxels, including after explosions.
       if(occupied(b,1,b.ny-1,1)) { m.box(b.x+9,b.height+1,b.z+9,6,4,6,'#80928b');m.box(b.x+9,b.height+5,b.z+9,6,1,6,'#b4bca8'); }
@@ -579,7 +603,11 @@
       const t=hit.age;
       if(t<0||t>=1.7)return;
       if(t<.35)m.sphere(hit.x,hit.y,hit.z,hit.radius*Math.sin(Math.min(1,t/.35)*Math.PI/2),t<.12?'#fff2b0':'#f2a154',true);
-      if(!reduced)for(let i=0;i<18;i++) { const a=i*2.399,r=hit.radius*(.6+t*2),x=hit.x+Math.cos(a)*r,z=hit.z+Math.sin(a)*r,y=hit.y+10+t*(25+i%5*8)-t*t*35,size=Math.max(.1,(1-t/1.7)*(i%3+1));m.box(x,y,z,size,size,size,i%3?'#dcac77':'#65706a'); }
+      if(!reduced&&this.light?.artificial>.5&&t<.8){
+        const radius=hit.radius*(.38+.5*t)*(1-t/.8);
+        m.sphere(hit.x,hit.y,hit.z,Math.max(.1,radius),'#fff4cc',true);
+      }
+      if(!reduced)for(let i=0;i<18;i++) { const a=i*2.399,r=hit.radius*(.6+t*2),x=hit.x+Math.cos(a)*r,z=hit.z+Math.sin(a)*r,y=hit.y+10+t*(25+i%5*8)-t*t*35,size=Math.max(.1,(1-t/1.7)*(i%3+1));if(i%3)m.lamp(x,y,z,size,size,size,'#ffbf65');else m.box(x,y,z,size,size,size,'#65706a'); }
     }
     closeReplay() {
       if(this.replay)this.gl.deleteBuffer(this.replay.beforeBuffer);
@@ -608,9 +636,10 @@
       replay.gorillas.forEach((g,i)=>{if(impactAge<0||clip.hit.type!=='gorilla'||clip.hit.player!==i)this.gorilla(mesh,g,i,0,false,true);});
       if(impactAge<0)this.banana(mesh,{...frame.point,time:elapsed*1.65,charged:clip.shot.charged});
       else this.explosion(mesh,{...clip.hit,age:impactAge},reduced);
+      this.setExplosionLight({...clip.hit,age:impactAge},reduced);
       this.ctx.clearRect(x-2,y-28,w+4,h+34);
       gl.enable(gl.SCISSOR_TEST);gl.scissor(left,bottom,width,height);gl.viewport(left,bottom,width,height);
-      gl.clearColor(.70,.76,.73,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.clearColor(0,0,0,0);
+      gl.clearColor(...this.light.fog,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.clearColor(0,0,0,0);
       gl.uniformMatrix4fv(this.uMatrix,false,matrix(clip.eye,clip.target,w/h));gl.uniform3fv(this.uEye,clip.eye);
       gl.uniform1f(this.lightingUniforms.uShadowEnabled,impactAge<0?0:(this.shadowsAvailable?1:0));
       this.renderBuffer(impactAge<0?replay.beforeBuffer:this.staticBuffer,impactAge<0?replay.beforeCount:this.staticCount);
@@ -634,6 +663,9 @@
         m.box(x+(side<0?-15:9),y+(raised?16:9),z-5,6,11,10,c);
         m.box(x+(side<0?-16:10),y+(raised?24:3),z-5,6,7,11,dark);
       }
+      // A restrained rim/fill keeps both players readable in night views.
+      for(let i=0;i<m.data.length;i+=9)for(let j=3;j<6;j++)m.data[i+j]*=7;
+      m.lightPool(0,.12,0,23,19,c);
       destination.appendRotated(m,[g.x,g.y,g.z],g.heading??player*Math.PI);
     }
     upload(buffer,mesh,usage) { const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(mesh.data),usage);return mesh.data.length/9; }
@@ -671,6 +703,7 @@
       if(cityChanged||lightingChanged)this.cacheShadows(game);
       this.cachedGame=game;this.revision=game.revision;
       this.applyLighting(game);
+      this.setExplosionLight(game.impact,reduced);
       // Match the sky to the haze at the far ground plane, including when orbiting.
       const horizonDistance=(3500-eye[1]*Math.sin(pose.pitch))/Math.cos(pose.pitch);
       const horizon=this.project(eye[0]-Math.sin(pose.yaw)*horizonDistance,0,eye[2]-Math.cos(pose.yaw)*horizonDistance);

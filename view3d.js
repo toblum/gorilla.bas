@@ -10,14 +10,21 @@
     const direction=[sun.x,sun.y,sun.z-z],length=Math.hypot(...direction);
     const warmth=clamp(Math.abs(sun.hour-12)/6.5,0,1),artificial=clamp((warmth-.55)/.3,0,1);
     const night=clamp(-sun.y/200,0,1),sunlight=clamp(sun.y/110,0,1);
+    const smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
+    const overnight=sun.hour<12?sun.hour+24:sun.hour;
+    const sleeping=smooth((overnight-22)/4)*(1-smooth((overnight-28)/2));
     const mix=(a,b)=>a.map((n,i)=>n+(b[i]-n)*warmth);
     const darken=(color,nightColor)=>color.map((n,i)=>n+(nightColor[i]-n)*night);
     return {sun,direction:direction.map(v=>v/length),
       ambient:darken(mix([.67,.69,.73],[.61,.58,.63]),[.30,.34,.46]),direct:mix([.35,.32,.27],[.34,.21,.12]).map(v=>v*sunlight),
-      artificial,
+      artificial,night,
       fog:darken(mix([.72,.84,.88],[.83,.57,.44]),[.08,.12,.21]),sky:darken(mix([.34,.64,.84],[.24,.28,.48]),[.025,.04,.095]),
-      windowRate:.07+.51*artificial,seed:(game.plots[0]?.seed||0)%997,
+      windowRate:(.07+.51*artificial)*(1-.8*sleeping),seed:(game.plots[0]?.seed||0)%997,
       label:sun.y<=0?'Nacht':sun.hour<7?'Morgengrauen':sun.hour<11?'Vormittag':sun.hour<14?'Mittag':sun.hour<17?'Nachmittag':'Sonnenuntergang'};
+  }
+  function explosionLight(hit,reduced=false) {
+    if(!hit||reduced||!Number.isFinite(hit.age)||hit.age<0||hit.age>=1.2)return {strength:0,radius:1};
+    return {strength:2.4*Math.exp(-hit.age*5)*(1-hit.age/1.2),radius:Math.max(90,Math.min(220,hit.radius*9))};
   }
   class CameraRig {
     constructor(){this.pose={yaw:.42,pitch:.6,distance:1080,target:[0,55,30]};this.views=[null,null];this.player=null;this.round=null;this.game=null;this.time=0;}
@@ -139,6 +146,6 @@
       return this.actors;
     }
   }
-  const api={daylight,CameraRig,ImpactReplay,AmbientLife};
+  const api={daylight,explosionLight,CameraRig,ImpactReplay,AmbientLife};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.GorillaView3D=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
