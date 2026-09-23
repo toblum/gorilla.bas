@@ -109,6 +109,7 @@ test('Moving vehicles carry headlights, tail lights and ground glow in their cac
 
 test('Random time covers the daylight range, avoids repeating and leaves gameplay RNG untouched',()=>{
  const game=make();game.random=()=>{throw Error('gameplay RNG used');};
+ game.setDayHour(12);
  game.randomizeDaylight(()=>0);assert.equal(game.dayHour,5.5);
  game.randomizeDaylight(()=>.99999);assert.equal(game.dayHour,19);
  game.randomizeDaylight(()=>.99999);assert.notEqual(game.dayHour,19);
