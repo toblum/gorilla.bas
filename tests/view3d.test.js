@@ -52,3 +52,19 @@ test('Replay defaults on, persists off, and wind markers mix one flag and one wi
  const sites=windsockSites(game);assert.equal(sites.length,4);
  for(const pair of [sites.slice(0,2),sites.slice(2)])assert.deepEqual(pair.map(p=>p.type).sort(),['flag','windsock']);
 });
+
+
+test('Camera panning follows the view, retains elevation and persists per player and reload',()=>{
+ const game=make(),rig=new CameraRig();rig.update(game,0);rig.pose.yaw=0;
+ const before=structuredClone(rig.pose);rig.pan(25,40);
+ near(rig.pose.target[0],before.target[0]+25);near(rig.pose.target[2],before.target[2]-40);near(rig.pose.target[1],before.target[1]);
+ near(rig.pose.distance,before.distance);near(rig.pose.pitch,before.pitch);
+ rig.pose.yaw=Math.PI/2;const target=[...rig.pose.target];rig.pan(20,30);
+ near(rig.pose.target[0],target[0]-30);near(rig.pose.target[2],target[2]-20);
+ const saved=rig.snapshot(),panned=structuredClone(rig.pose),reload=new CameraRig();assert.ok(reload.restore(saved));reload.update(game,0);assert.deepEqual(reload.pose,panned);
+ game.turn=1;rig.update(game,100,true);game.turn=0;rig.update(game,200,true);assert.deepEqual(rig.pose,panned);
+ rig.overview();assert.ok(rig.transition);rig.pan(1,1);assert.equal(rig.transition,null);
+ rig.pan(Infinity,0);assert.ok(rig.pose.target.every(Number.isFinite));rig.pan(1e9,1e9);assert.ok(new CameraRig().restore(rig.snapshot()));
+ rig.behind(game);rig.update(game,2000,true);const home=rig.defaultPose(game);
+ near(Math.sin(rig.pose.yaw),Math.sin(home.yaw));near(Math.cos(rig.pose.yaw),Math.cos(home.yaw));assert.deepEqual({...rig.pose,yaw:home.yaw},home);
+});
