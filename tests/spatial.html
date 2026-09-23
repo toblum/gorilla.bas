@@ -1,7 +1,7 @@
 <!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>3D renderer checks</title>
 <link rel="stylesheet" href="../style.css"><style>body{padding:20px}main{max-width:1100px;margin:auto}.scene{position:relative}#report{white-space:pre-wrap;font:14px monospace;padding:20px;background:#f9e4b8}#game3d{height:540px}#view-status{display:block}</style>
 <main><h1>3D renderer: seeded city, damage, flight, performance</h1><p id="report">Rendering 90 frames…</p><div class="scene"><canvas id="game3d" width="1100" height="540"></canvas><canvas id="hud3d" width="1100" height="540"></canvas></div><span id="view-status"></span></main>
-<script src="../engine.js"></script><script src="../engine3d.js"></script><script src="../view3d.js"></script><script src="../city3d.js"></script>
+<script src="../engine.js"></script><script src="../engine3d.js"></script><script src="../view3d.js"></script><script src="../gorilla3d.js"></script><script src="../city3d.js"></script>
 <script>
 let seed=17;const game=new Gorillas3D.Game3D({aimAssist:true},()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296));
 const renderer=new GorillaCity3D(document.querySelector('#game3d'),document.querySelector('#hud3d'));

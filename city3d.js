@@ -84,15 +84,17 @@
       const vs = shader(gl.VERTEX_SHADER, `
         attribute vec3 aPosition,aNormal,aColor;
         uniform mat4 uMatrix,uLightMatrix;
-        varying vec3 vWorld,vNormal,vColor; varying vec4 vShadow;
-        void main(){gl_Position=uMatrix*vec4(aPosition,1.0);vWorld=aPosition;vNormal=aNormal;vColor=aColor;vShadow=uLightMatrix*vec4(aPosition,1.0);}`);
+        varying vec3 vWorld,vNormal,vColor; varying vec4 vShadow; varying float vMaterial;
+        void main(){gl_Position=uMatrix*vec4(aPosition,1.0);vWorld=aPosition;vNormal=aNormal;vMaterial=length(aNormal);vColor=aColor;vShadow=uLightMatrix*vec4(aPosition,1.0);}`);
       const fs = shader(gl.FRAGMENT_SHADER, `
         precision highp float;
         uniform vec3 uSun,uAmbient,uDirect,uFog,uCenter,uEye;
         uniform vec4 uFlash; uniform float uFlashRadius;
+        uniform vec4 uActorLight0,uActorLight1;
+        uniform float uActorGlow;
         uniform float uWindowTime,uWindowRate,uSeed,uShadowEnabled,uShore,uArtificial;
         uniform sampler2D uShadowMap;
-        varying vec3 vWorld,vNormal,vColor; varying vec4 vShadow;
+        varying vec3 vWorld,vNormal,vColor; varying vec4 vShadow; varying float vMaterial;
         float hash(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
         float visibility(vec3 n){
           vec3 p=vShadow.xyz*.5+.5;
@@ -105,8 +107,16 @@
           }
           return sum/9.0;
         }
+        vec3 actorLight(vec4 source,vec3 tint,vec3 n){
+          vec3 delta=source.xyz-vWorld;
+          float distanceToSource=length(delta);
+          float falloff=max(0.0,1.0-distanceToSource/86.0);
+          float diffuse=max(0.0,dot(n,delta/max(distanceToSource,.01)));
+          return tint*source.w*falloff*falloff*diffuse;
+        }
         void main(){
-          float size=length(vNormal);vec3 n=size>.1?vNormal/size:vec3(0.0);
+          // Keep the material tag independent of interpolated smooth normals.
+          float size=vMaterial;vec3 n=size>.1?normalize(vNormal):vec3(0.0);
           if(size>2.5&&size<4.5){
             float fog=smoothstep(850.0,2600.0,length(vWorld.xz-uCenter.xz));
             gl_FragColor=vec4(vColor,.48*uArtificial*(size-3.0)*(1.0-fog));return;
@@ -115,11 +125,12 @@
           vec3 light=uAmbient*(.83+.17*n.y)+uDirect*sun*visibility(n);
           float flash=max(0.0,1.0-distance(vWorld,uFlash.xyz)/uFlashRadius);
           light+=vec3(1.0,.57,.20)*flash*flash*uFlash.w;
+          if(size<6.5)light+=uArtificial*(actorLight(uActorLight0,vec3(1.0,.73,.48),n)+actorLight(uActorLight1,vec3(.69,1.0,.78),n));
           vec3 color=vColor*(size<.1?vec3(1.05):light);
           if(size>4.5&&size<6.5)color=mix(vColor*light,vColor*1.15,uArtificial);
           if(size>6.5){
-            float rim=pow(1.0-abs(dot(n,normalize(uEye-vWorld))),2.0);
-            color=vColor*(light+vec3(.40,.42,.48)*uArtificial)+vColor*rim*.32*uArtificial;
+            // A small emissive contribution identifies the source without a glowing outline.
+            color=vColor*(light+vec3(uActorGlow));
           }
           if(size>1.5&&size<2.5){
             vec3 cell=vColor*179.0+n*137.0+uSeed;
@@ -142,7 +153,7 @@
       gl.deleteShader(vs); gl.deleteShader(fs); gl.useProgram(this.program);
       this.attributes = ['aPosition', 'aNormal', 'aColor'].map(n => gl.getAttribLocation(this.program, n));
       this.uMatrix = gl.getUniformLocation(this.program, 'uMatrix'); this.uEye = gl.getUniformLocation(this.program, 'uEye');
-      this.lightingUniforms=Object.fromEntries(['uLightMatrix','uSun','uAmbient','uDirect','uFog','uCenter','uWindowTime','uWindowRate','uSeed','uShadowEnabled','uShadowMap','uShore','uArtificial','uFlash','uFlashRadius'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
+      this.lightingUniforms=Object.fromEntries(['uLightMatrix','uSun','uAmbient','uDirect','uFog','uCenter','uWindowTime','uWindowRate','uSeed','uShadowEnabled','uShadowMap','uShore','uArtificial','uFlash','uFlashRadius','uActorLight0','uActorLight1','uActorGlow'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
       this.initShadows(shader);
       this.staticBuffer = gl.createBuffer(); this.dynamicBuffer = gl.createBuffer(); this.ambientBuffer = gl.createBuffer();
       gl.enable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA); gl.clearColor(0,0,0,0);
@@ -243,11 +254,23 @@
     }
     applyLighting(game) {
       const gl=this.gl,u=this.lightingUniforms,b=cityBounds(game),l=this.light;
+      this.setActorLights(game.gorillas, l);
       gl.uniformMatrix4fv(u.uLightMatrix,false,this.lightMatrix);
       for(const [name,value] of [['uSun',l.direction],['uAmbient',l.ambient],['uDirect',l.direct],['uFog',l.fog],['uCenter',[(b.left+b.right)/2,0,(b.back+b.front)/2]]])gl.uniform3fv(u[name],value);
       gl.uniform1f(u.uShore,b.shore);gl.uniform1f(u.uArtificial,l.artificial);
+      // Keep the actor readable at night, but lower its own emission during the
+      // bright dusk transition (around 18:00) where the surroundings are still lit.
+      const dusk=Math.max(0,Math.min(1,(l.windowRate-.25)/.75));
+      gl.uniform1f(u.uActorGlow,l.artificial*(.26+.24*(1-dusk)));
       gl.uniform1f(u.uWindowTime,this.windowTime||0);gl.uniform1f(u.uWindowRate,l.windowRate);gl.uniform1f(u.uSeed,l.seed);
       gl.uniform1f(u.uShadowEnabled,this.shadowsAvailable?1:0);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.shadowTexture);gl.uniform1i(u.uShadowMap,0);
+    }
+    setActorLights(gorillas, light=this.light) {
+      const dusk=Math.max(0,Math.min(1,((light?.windowRate??0)-.25)/.75));
+      // Dusk already has substantial ambient and window light; keep the local
+      // pool readable without washing out the roof beneath the actor.
+      const strength=1.05+.45*(1-dusk);
+      gorillas.forEach((g,i)=>this.gl.uniform4f(this.lightingUniforms[`uActorLight${i}`],g.x,g.y+18,g.z,g.alive?strength:0));
     }
     setExplosionLight(hit,reduced) {
       const flash=explosionLight(hit,reduced),u=this.lightingUniforms;
@@ -636,6 +659,7 @@
       replay.gorillas.forEach((g,i)=>{if(impactAge<0||clip.hit.type!=='gorilla'||clip.hit.player!==i)this.gorilla(mesh,g,i,0,false,true);});
       if(impactAge<0)this.banana(mesh,{...frame.point,time:elapsed*1.65,charged:clip.shot.charged});
       else this.explosion(mesh,{...clip.hit,age:impactAge},reduced);
+      this.setActorLights(replay.gorillas.map((g,i)=>({...g,alive:g.alive&&(impactAge<0||clip.hit.type!=='gorilla'||clip.hit.player!==i)})));
       this.setExplosionLight({...clip.hit,age:impactAge},reduced);
       this.ctx.clearRect(x-2,y-28,w+4,h+34);
       gl.enable(gl.SCISSOR_TEST);gl.scissor(left,bottom,width,height);gl.viewport(left,bottom,width,height);
@@ -646,27 +670,9 @@
       this.renderBuffer(this.dynamicBuffer,this.upload(this.dynamicBuffer,mesh,gl.DYNAMIC_DRAW));
       gl.disable(gl.SCISSOR_TEST);gl.viewport(0,0,this.canvas.width,this.canvas.height);
     }
-    gorilla(destination,g,player,time,celebrate,reduced) {
+    gorilla(destination,g,player,time,celebrate,reduced,throwAge=-1) {
       if(!g.alive)return;
-      const m=new Mesh();
-      const c=playerColors[player], dark=player===0?'#98553d':'#637e68', face=player===0?'#fbc391':'#e2e4b9';
-      const bounce=celebrate&&!reduced?Math.abs(Math.sin(time/140))*2:0, x=0,y=bounce,z=0;
-      m.box(x-8,y,z-5,6,6,10,dark);m.box(x+2,y,z-5,6,6,10,dark);
-      m.box(x-9,y+6,z-6,18,14,12,c);m.box(x-7,y+9,z+6.1,14,8,1,face);
-      m.box(x-7,y+20,z-5,14,9,10,c);m.box(x-5,y+21,z+5,10,5,1,face);
-      m.box(x-3.5,y+24,z+6.1,2,1.7,.6,'#283c41');m.box(x+1.5,y+24,z+6.1,2,1.7,.6,'#283c41');
-      m.box(x-2,y+21.5,z+6.2,4,1,.5,dark);
-      // Also model the back of the head, ears and low, massive shoulders.
-      m.box(x-8,y+22,z-2,2,4,4,dark);m.box(x+6,y+22,z-2,2,4,4,dark);
-      for(const side of [-1,1]) {
-        const raised=celebrate&&(reduced||Math.sin(time/160+side)>-.3);
-        m.box(x+(side<0?-15:9),y+(raised?16:9),z-5,6,11,10,c);
-        m.box(x+(side<0?-16:10),y+(raised?24:3),z-5,6,7,11,dark);
-      }
-      // A restrained rim/fill keeps both players readable in night views.
-      for(let i=0;i<m.data.length;i+=9)for(let j=3;j<6;j++)m.data[i+j]*=7;
-      m.lightPool(0,.12,0,23,19,c);
-      destination.appendRotated(m,[g.x,g.y,g.z],g.heading??player*Math.PI);
+      window.GorillaModel3D.append(destination,g,player,time,Number(celebrate),reduced,throwAge);
     }
     upload(buffer,mesh,usage) { const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(mesh.data),usage);return mesh.data.length/9; }
     renderBuffer(buffer,count) {
@@ -717,8 +723,20 @@
       this.sun(m,game,eye,time,reduced);
       for(const site of this.windSites)this[site.type==='flag'?'flag':'windsock'](m,site,game.wind,game.windZ,time,reduced);
       game.setAim(aim.angle,aim.direction);
+      if(this.actorGame!==game||this.actorRound!==game.round){
+        this.actorGame=game;this.actorRound=game.round;this.cheerWeights=[0,0];
+        this.actorShot=null;this.throwStarts=[-Infinity,-Infinity];
+      }
+      if(game.shot&&this.actorShot!==game.shot){
+        this.actorShot=game.shot;
+        // The flight simulation runs faster than real time; keep the gesture at human speed.
+        this.throwStarts[game.turn]=this.clock-game.shot.time/3*1000;
+      }
       game.gorillas.forEach((g,p)=>{
-        this.gorilla(m,g,p,time,game.winner===p&&game.phase!=='impact',reduced);
+        const target=Number(game.winner===p&&game.phase!=='impact');
+        this.cheerWeights[p]=reduced?target:this.cheerWeights[p]+(target-this.cheerWeights[p])*(1-Math.exp(-elapsed/180));
+        this.gorilla(m,g,p,this.windowTime*1000,this.cheerWeights[p],reduced,
+          Number.isFinite(this.throwStarts[p])?(this.clock-this.throwStarts[p])/1000:-1);
         if(g.alive)for(let i=0;i<16;i++){const a=i*Math.PI/8,b=a+.12;m.line([g.x+Math.cos(a)*21,g.y+.8,g.z+Math.sin(a)*21],[g.x+Math.cos(b)*21,g.y+.8,g.z+Math.sin(b)*21],1,playerColors[p]);}
       });
       if(game.phase==='aiming'&&game.options.aimAssist&&[aim.angle,aim.power,aim.direction].every(Number.isFinite)) {

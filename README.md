@@ -17,7 +17,7 @@ Dann [http://127.0.0.1:8080](http://127.0.0.1:8080) öffnen. Der lokale Server e
 
 ## Selbst hosten
 
-Diese achtzehn Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
+Diese neunzehn Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
 
 ```text
 index.html
@@ -28,6 +28,7 @@ engine.js
 engine3d.js
 view3d.js
 city3d.js
+gorilla3d.js
 sound.js
 visuals.js
 scenery.js
@@ -48,7 +49,7 @@ Die öffentliche Adresse ist [gorillas.sparebytes.dev](https://gorillas.sparebyt
 
 Jeder Push auf `main` löst über die vorhandene GitHub-App einen Build in Coolify aus. Nixpacks führt `npm test && npm run build` aus; anschließend liefert Nginx ausschließlich das Verzeichnis `/dist` über HTTPS aus. Für Pull Requests von Repository-Inhabern, Mitgliedern und Collaborators erstellt Coolify automatisch eine isolierte Vorschau unter `https://<PR-NUMMER>.gorillas.sparebytes.dev`; Fork-PRs fremder Personen werden nicht automatisch ausgeführt.
 
-Der Build benötigt Node.js 22 oder neuer und kopiert nur die achtzehn Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
+Der Build benötigt Node.js 22 oder neuer und kopiert nur die neunzehn Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
 
 ## Neu in Version 1.4: Classic
 
@@ -96,7 +97,9 @@ Die Flugrechnung verwendet die ursprünglichen Zeitschritte und POINT-Kollisions
 
 Im Startdialog lässt sich zwischen **2D / Der Klassiker** und **3D / Die ganze Stadt** wählen. Über **Neues Match** kann jederzeit ein Match im anderen Modus begonnen werden. Namen, Punkteziel, Gravitation und Zielhilfe werden dabei übernommen; ein gestartetes neues Match setzt die Punkte zurück. Die vorhandene 2D-Spielphysik bleibt unverändert.
 
-Die 3D-Version zeigt ein dreidimensionales Stadtviertel im Diorama-Stil: unterschiedlich große und hohe Häuser, Straßen mit Fahrbahnmarkierungen und Autos, verbundene Grünflächen mit Bäumen, einen Brunnenplatz sowie eine Uferpromenade mit Bänken, Anleger und Boot. Gebäude und Gorillas sind echte räumliche Geometrie; die Kamera lässt sich frei um die Stadt drehen.
+Die 3D-Version zeigt ein dreidimensionales Stadtviertel im Diorama-Stil: unterschiedlich große und hohe Häuser, Straßen mit Fahrbahnmarkierungen und Autos, verbundene Grünflächen mit Bäumen, einen Brunnenplatz sowie eine Uferpromenade mit Bänken, Anleger und Boot. Die Gorillas haben gerundete, weich schattierte Körper mit breiten Schultern, langen Armen, Knöcheln und ausgeprägten Brauen. Orange und Mint bleiben als Spielerfarben erhalten. Im Wartezustand atmen und wippen sie, blinzeln gelegentlich und bewegen Kopf und Arme. Beim weich eingeblendeten Jubel hüpfen sie und heben abwechselnd die Füße. Die Brust folgt als zusammenhängende Muskelpartie dem Oberkörper; Rückenzeichnung und kurze Fellsträhnen strukturieren die Rückansicht. Ein auslaufender Überkopfwurf bewegt Schultern und Ellbogen kontinuierlich. Pause hält die Bewegung an, reduzierte Bewegung zeigt feste Posen. Nachts wirken die Gorillas als dezente Lichtquellen: Dachflächen, Fahnen und andere nahe Objekte erhalten spielerfarbenes Licht mit weichem Entfernungsabfall und abhängig von ihrer Oberflächenausrichtung. Ein kleiner Eigenlichtanteil hält den Gorilla erkennbar; ein sichtbarer Leuchtsaum entfällt. Classic und 2D behalten ihre Pixelgrafik. Die neuen Körper sind reine Darstellung: Trefferflächen, Flugbahn und Spielstände bleiben unverändert.
+
+Gebäude und Gorillas sind echte räumliche Geometrie; die Kamera lässt sich frei um die Stadt drehen.
 
 - **Winkel** bestimmt die Höhe des Wurfs, **Stärke** die Geschwindigkeit. Beide behalten ihren bisherigen Bereich von 0 bis 360.
 - **Richtung** ist der zusätzliche horizontale Winkel von −180° bis +180°. Bei 0° wirft Spieler 1 nach Osten, Spieler 2 nach Westen. Positive Werte drehen aus der Ausgangsrichtung des jeweiligen Gorillas nach rechts, negative nach links. Die Kamera ändert diese Bezugspunkte nicht. Beispiel: Spieler 1 wirft mit +90° nach Süden, Spieler 2 mit +90° nach Norden.
@@ -110,6 +113,8 @@ Die 3D-Version zeigt ein dreidimensionales Stadtviertel im Diorama-Stil: untersc
 
 Die Mausbelegung folgt einer Objekt-/Orbitansicht: links drehen, rechts oder Shift+links verschieben. Das entspricht [Three.js OrbitControls](https://threejs.org/docs/pages/OrbitControls.html); [MapControls](https://threejs.org/docs/pages/MapControls.html) vertauscht diese Tasten für Kartenansichten. Die bestehende, auf die Gorillas gerichtete Kamera bleibt deshalb bei der Orbit-Belegung (Recherche: 21.09.2026).
 
+`gorilla3d.js` hält die gerundeten Körperteile pro Spieler im Speicher und transformiert nur die Gelenke; sie bleiben im vorhandenen Zeichenaufruf für Spieleffekte. `tests/gorilla3d.html` bietet Nahansichten für Atmung, Wurf, Jubel, Nachtlicht und Pause.
+
 `engine3d.js` ergänzt die unabhängige Spielphysik; `city3d.js` zeichnet mit WebGL ohne Bibliotheken, externe Assets oder Netzwerkanfragen. Statische Stadtgeometrie wird nur nach Rundenwechsel oder Schäden neu hochgeladen; Stadt, dekoratives Stadtleben und Spieleffekte benötigen zusammen drei Zeichenaufrufe pro Bild. Die Renderauflösung ist auf den Faktor 1,75 begrenzt. Bei fehlendem WebGL zeigt die Moduswahl einen Hinweis; 2D bleibt verfügbar. Die Seite funktioniert weiterhin ohne Build direkt per `file://`.
 
 ### Dezentes Stadtleben
@@ -120,7 +125,7 @@ Noch stärkeres indirektes Umgebungslicht und ein geringerer Anteil direkten Son
 
 Eine zwischengespeicherte Schattenkarte bildet Gebäude, Dachdetails, Bäume und Schäden auf Straßen, Fassaden und Grünflächen ab. Neun Tiefenvergleiche glätten die Schattenränder. Die Karte (1024 × 1024, RGBA plus 16-Bit-Tiefe, ca. 6 MiB) wird beim Stadtaufbau, nach Schäden oder bei einer veränderten Uhrzeit aktualisiert: ein zusätzlicher Zeichenaufruf in diesen Bildern, weiterhin drei in normalen Bildern. Bewegte Dekoration wirft keine eigenen Schatten. Ohne ausreichende Shader-Präzision oder vollständiges Schattenziel bleibt die direkte Beleuchtung nutzbar. Im Replay wird vor dem Einschlag nur die direkte Beleuchtung verwendet, damit der neue Krater keinen Schatten auf den alten Gebäudezustand wirft.
 
-Ab 22 Uhr gehen nach und nach mehr Wohnungslichter aus; zwischen 2 und 4 Uhr bleibt nur etwa ein Fünftel der abendlichen Fensterbeleuchtung an. Zum Morgen steigt die Belegung wieder. Straßenlaternen, Fahrzeuglichter und einzelne ruhige Neon-Schilder bleiben eingeschaltet. Größere Lichtflächen, zusätzliche Hauseingangsleuchten und ein sanfter, spielerfarbener Lichtsaum um die Gorillas machen die Nacht besser lesbar. Explosionen besitzen nachts einen hellen Kern, leuchtende Funken und einen lokal begrenzten, rasch abklingenden Lichtschein auf benachbarten Flächen. Der zusätzliche Blitz entfällt bei reduzierter Bewegung; Replay und Hauptansicht verwenden jeweils ihr eigenes Explosionsalter. Alle Effekte bleiben in den vorhandenen Zeichenaufrufen.
+Ab 22 Uhr gehen nach und nach mehr Wohnungslichter aus; zwischen 2 und 4 Uhr bleibt nur etwa ein Fünftel der abendlichen Fensterbeleuchtung an. Zum Morgen steigt die Belegung wieder. Straßenlaternen, Fahrzeuglichter und einzelne ruhige Neon-Schilder bleiben eingeschaltet. Größere Lichtflächen, zusätzliche Hauseingangsleuchten und das spielerfarbene Licht der Gorillas auf nahen Flächen machen die Nacht besser lesbar. Explosionen besitzen nachts einen hellen Kern, leuchtende Funken und einen lokal begrenzten, rasch abklingenden Lichtschein auf benachbarten Flächen. Der zusätzliche Blitz entfällt bei reduzierter Bewegung; Replay und Hauptansicht verwenden jeweils ihr eigenes Explosionsalter. Alle Effekte bleiben in den vorhandenen Zeichenaufrufen.
 
 Fenster verwenden unabhängige, deterministische Belegungen je Fensterfläche statt periodischer Zeilenmuster. Einzelne Fenster wechseln mit versetzten Intervallen von 28–90 Sekunden sanft ihre Beleuchtung; in der Dämmerung sind mehr belegt als mittags. Pause und reduzierte Bewegung frieren diese Wechsel ohne Aufholsprung ein. Beim Verschieben des Uhrzeitreglers ändern sich Lichtwerte und Schattenkarte, ohne die Stadtgeometrie neu aufzubauen. Dafür sind weder zusätzliche Geometrie-Uploads noch Zeichenaufrufe nötig. Der Nebel beginnt erst außerhalb der Stadt und hängt nicht mehr vom Kameraabstand ab.
 
@@ -134,7 +139,7 @@ Die 21 Akteure teilen sich einen wiederverwendeten GPU-Puffer mit 2.752 Dreiecke
 
 ### Prüfung der 3D-Erweiterung
 
-`npm test` umfasst 103 Tests. Die zusätzlichen 3D-Tests prüfen unter anderem 100 Städte, räumliche Flugbahnen, beidseitige Treffer, Tiefenversatz, Wind in zwei Achsen, Kollisionen bei 20/60/144 FPS, durchfliegbare Schäden, Sonnenladung, Selbsttreffer, Matchende, Session-Wiederherstellung, gedrehte Trefferflächen, den äußeren Blockring und die Windanzeigerplatzierung, gespeicherte Kameraansichten, weiche Zugwechsel, unverfälschte Replay-Flugbahnen, alle fünf Sonnenpositionen, gespeicherte Tageszeiten, Fensteridentitäten und den Aktualisierungsrhythmus der Schatten.
+`npm test` umfasst 110 Tests. Die zusätzlichen 3D-Tests prüfen unter anderem 100 Städte, räumliche Flugbahnen, beidseitige Treffer, Tiefenversatz, Wind in zwei Achsen, Kollisionen bei 20/60/144 FPS, durchfliegbare Schäden, Sonnenladung, Selbsttreffer, Matchende, Session-Wiederherstellung, gedrehte Trefferflächen, den äußeren Blockring und die Windanzeigerplatzierung, gespeicherte Kameraansichten, weiche Zugwechsel, unverfälschte Replay-Flugbahnen, alle fünf Sonnenpositionen, gespeicherte Tageszeiten, Fensteridentitäten und den Aktualisierungsrhythmus der Schatten.
 
 `tests/spatial.html` prüft den Renderer mit einer reproduzierbaren Stadt, einem Krater und einem laufenden Wurf. Es zeigt WebGL-Fehlerstatus, Dreieckszahl und gemessene Frame-Zeiten. Die Messwerte gelten jeweils für den verwendeten Rechner und sind keine Garantie für andere Geräte. `tests/presentation3d.html` prüft Kameraperspektiven, reale Einschläge, Replay-Abbruch, reduzierte Bewegung und den Zeichenaufwand bei laufender Nahaufnahme. `tests/responsive3d.html` zeigt echte 320- und 390-Pixel-Iframes und prüft ihre Layoutbreite.
 
