@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gorilla model and movement</title>
+<link rel="stylesheet" href="../style.css"><style>body{padding:20px}main{max-width:1100px;margin:auto}nav{display:flex;flex-wrap:wrap;gap:12px;margin:12px 0}button{padding:10px}.scene{position:relative}#game3d{height:620px}#report{overflow-wrap:anywhere;white-space:pre-wrap;font:13px monospace}</style>
+<main><h1>Gorilla model and movement</h1><nav><button id="player">Switch player</button><button id="view">Front / back</button><button id="cheer">Celebrate / idle</button><button id="throw">Throw</button><button id="night">Night / day</button><label><input type="checkbox" id="reduced">Reduced motion</label><label><input type="checkbox" id="paused">Pause</label></nav><pre id="report"></pre><div class="scene"><canvas id="game3d"></canvas><canvas id="hud3d"></canvas></div></main>
+<script src="../engine.js"></script><script src="../engine3d.js"></script><script src="../view3d.js"></script><script src="../gorilla3d.js"></script><script src="../city3d.js"></script><script>
+const $=id=>document.getElementById(id),game=new Gorillas3D.Game3D({},()=>.5),renderer=new GorillaCity3D($('game3d'),$('hud3d'));
+let player=0,back=false,cheer=false,shotAge=-1,previous=0,samples=[];
+game.setDayHour(15);game.options.aimAssist=false;
+renderer.camera.update=()=>{const g=game.gorillas[player];return {yaw:Math.PI/2-g.heading+(back?Math.PI:0)+.22,pitch:.12,distance:70,target:[g.x,g.y+16,g.z]};};
+$('player').onclick=()=>{player=1-player;};$('view').onclick=()=>{back=!back;};$('cheer').onclick=()=>{cheer=!cheer;shotAge=-1;};$('throw').onclick=()=>{shotAge=0;cheer=false;};$('night').onclick=()=>game.setDayHour(game.dayHour===3?15:3);
+const original=renderer.gorilla.bind(renderer);
+renderer.gorilla=(m,g,p,time,weight,reduced)=>original(m,g,p,time,renderer.previewCheer||0,reduced,p===player?shotAge:-1);
+function frame(t){
+ const paused=$('paused').checked,reduced=$('reduced').checked,dt=previous?Math.min(50,t-previous):0;previous=t;
+ if(!paused){if(shotAge>=0)shotAge+=dt/1000;renderer.previewCheer=reduced?Number(cheer):(renderer.previewCheer||0)+(Number(cheer)-(renderer.previewCheer||0))*(1-Math.exp(-dt/180));}
+ const before=performance.now();renderer.draw(game,t,{angle:45,power:80,direction:0},reduced,paused);samples.push(performance.now()-before);if(samples.length>120)samples.shift();
+ $('report').textContent=JSON.stringify({player:player+1,pose:cheer?'celebration':shotAge>=0&&shotAge<.72?'throw':'idle',paused,reduced,webglError:renderer.gl.getError(),drawCalls:renderer.drawCalls,medianFrameMs:[...samples].sort((a,b)=>a-b)[Math.floor(samples.length/2)].toFixed(2)});
+ requestAnimationFrame(frame);
+}requestAnimationFrame(frame);
+</script></html>

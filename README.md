@@ -28,6 +28,7 @@ engine.js
 engine3d.js
 view3d.js
 city3d.js
+gorilla3d.js
 sound.js
 visuals.js
 scenery.js
@@ -96,7 +97,9 @@ Die Flugrechnung verwendet die ursprünglichen Zeitschritte und POINT-Kollisions
 
 Im Startdialog lässt sich zwischen **2D / Der Klassiker** und **3D / Die ganze Stadt** wählen. Über **Neues Match** kann jederzeit ein Match im anderen Modus begonnen werden. Namen, Punkteziel, Gravitation und Zielhilfe werden dabei übernommen; ein gestartetes neues Match setzt die Punkte zurück. Die vorhandene 2D-Spielphysik bleibt unverändert.
 
-Die 3D-Version zeigt ein dreidimensionales Stadtviertel im Diorama-Stil: unterschiedlich große und hohe Häuser, Straßen mit Fahrbahnmarkierungen und Autos, verbundene Grünflächen mit Bäumen, einen Brunnenplatz sowie eine Uferpromenade mit Bänken, Anleger und Boot. Gebäude und Gorillas sind echte räumliche Geometrie; die Kamera lässt sich frei um die Stadt drehen.
+Die 3D-Version zeigt ein dreidimensionales Stadtviertel im Diorama-Stil: unterschiedlich große und hohe Häuser, Straßen mit Fahrbahnmarkierungen und Autos, verbundene Grünflächen mit Bäumen, einen Brunnenplatz sowie eine Uferpromenade mit Bänken, Anleger und Boot. Die Gorillas haben gerundete, weich schattierte Körper mit breiten Schultern, langen Armen, Knöcheln und ausgeprägten Brauen. Orange und Mint bleiben als Spielerfarben erhalten. Im Wartezustand atmen und wippen sie, blinzeln gelegentlich und bewegen Kopf und Arme. Beim weich eingeblendeten Jubel hüpfen sie und heben abwechselnd die Füße. Die Brust folgt als zusammenhängende Muskelpartie dem Oberkörper; Rückenzeichnung und kurze Fellsträhnen strukturieren die Rückansicht. Ein auslaufender Überkopfwurf bewegt Schultern und Ellbogen kontinuierlich. Pause hält die Bewegung an, reduzierte Bewegung zeigt feste Posen. Nachts wirken die Gorillas als dezente Lichtquellen: Dachflächen, Fahnen und andere nahe Objekte erhalten spielerfarbenes Licht mit weichem Entfernungsabfall und abhängig von ihrer Oberflächenausrichtung. Ein kleiner Eigenlichtanteil hält den Gorilla erkennbar; ein sichtbarer Leuchtsaum entfällt. Classic und 2D behalten ihre Pixelgrafik. Die neuen Körper sind reine Darstellung: Trefferflächen, Flugbahn und Spielstände bleiben unverändert.
+
+Gebäude und Gorillas sind echte räumliche Geometrie; die Kamera lässt sich frei um die Stadt drehen.
 
 - **Winkel** bestimmt die Höhe des Wurfs, **Stärke** die Geschwindigkeit. Beide behalten ihren bisherigen Bereich von 0 bis 360.
 - **Richtung** ist der zusätzliche horizontale Winkel von −180° bis +180°. Bei 0° wirft Spieler 1 nach Osten, Spieler 2 nach Westen. Positive Werte drehen aus der Ausgangsrichtung des jeweiligen Gorillas nach rechts, negative nach links. Die Kamera ändert diese Bezugspunkte nicht. Beispiel: Spieler 1 wirft mit +90° nach Süden, Spieler 2 mit +90° nach Norden.
@@ -109,6 +112,8 @@ Die 3D-Version zeigt ein dreidimensionales Stadtviertel im Diorama-Stil: untersc
 - Der Modus, die komplette beschädigte Stadt, Wind, Richtungswerte und laufende Würfe werden in der Browser-Session gespeichert. Einstellungen und inaktive Browser-Tabs pausieren die Physik. Kamerabewegung und Zoom beeinflussen die Physik nicht.
 
 Die Mausbelegung folgt einer Objekt-/Orbitansicht: links drehen, rechts oder Shift+links verschieben. Das entspricht [Three.js OrbitControls](https://threejs.org/docs/pages/OrbitControls.html); [MapControls](https://threejs.org/docs/pages/MapControls.html) vertauscht diese Tasten für Kartenansichten. Die bestehende, auf die Gorillas gerichtete Kamera bleibt deshalb bei der Orbit-Belegung (Recherche: 21.09.2026).
+
+`gorilla3d.js` hält die gerundeten Körperteile pro Spieler im Speicher und transformiert nur die Gelenke; sie bleiben im vorhandenen Zeichenaufruf für Spieleffekte. `tests/gorilla3d.html` bietet Nahansichten für Atmung, Wurf, Jubel, Nachtlicht und Pause.
 
 `engine3d.js` ergänzt die unabhängige Spielphysik; `city3d.js` zeichnet mit WebGL ohne Bibliotheken, externe Assets oder Netzwerkanfragen. Statische Stadtgeometrie wird nur nach Rundenwechsel oder Schäden neu hochgeladen; Stadt, dekoratives Stadtleben und Spieleffekte benötigen zusammen drei Zeichenaufrufe pro Bild. Die Renderauflösung ist auf den Faktor 1,75 begrenzt. Bei fehlendem WebGL zeigt die Moduswahl einen Hinweis; 2D bleibt verfügbar. Die Seite funktioniert weiterhin ohne Build direkt per `file://`.
 
@@ -134,7 +139,7 @@ Die 21 Akteure teilen sich einen wiederverwendeten GPU-Puffer mit 2.752 Dreiecke
 
 ### Prüfung der 3D-Erweiterung
 
-`npm test` umfasst 103 Tests. Die zusätzlichen 3D-Tests prüfen unter anderem 100 Städte, räumliche Flugbahnen, beidseitige Treffer, Tiefenversatz, Wind in zwei Achsen, Kollisionen bei 20/60/144 FPS, durchfliegbare Schäden, Sonnenladung, Selbsttreffer, Matchende, Session-Wiederherstellung, gedrehte Trefferflächen, den äußeren Blockring und die Windanzeigerplatzierung, gespeicherte Kameraansichten, weiche Zugwechsel, unverfälschte Replay-Flugbahnen, alle fünf Sonnenpositionen, gespeicherte Tageszeiten, Fensteridentitäten und den Aktualisierungsrhythmus der Schatten.
+`npm test` umfasst 110 Tests. Die zusätzlichen 3D-Tests prüfen unter anderem 100 Städte, räumliche Flugbahnen, beidseitige Treffer, Tiefenversatz, Wind in zwei Achsen, Kollisionen bei 20/60/144 FPS, durchfliegbare Schäden, Sonnenladung, Selbsttreffer, Matchende, Session-Wiederherstellung, gedrehte Trefferflächen, den äußeren Blockring und die Windanzeigerplatzierung, gespeicherte Kameraansichten, weiche Zugwechsel, unverfälschte Replay-Flugbahnen, alle fünf Sonnenpositionen, gespeicherte Tageszeiten, Fensteridentitäten und den Aktualisierungsrhythmus der Schatten.
 
 `tests/spatial.html` prüft den Renderer mit einer reproduzierbaren Stadt, einem Krater und einem laufenden Wurf. Es zeigt WebGL-Fehlerstatus, Dreieckszahl und gemessene Frame-Zeiten. Die Messwerte gelten jeweils für den verwendeten Rechner und sind keine Garantie für andere Geräte. `tests/presentation3d.html` prüft Kameraperspektiven, reale Einschläge, Replay-Abbruch, reduzierte Bewegung und den Zeichenaufwand bei laufender Nahaufnahme. `tests/responsive3d.html` zeigt echte 320- und 390-Pixel-Iframes und prüft ihre Layoutbreite.
 
