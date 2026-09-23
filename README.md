@@ -17,7 +17,7 @@ Dann [http://127.0.0.1:8080](http://127.0.0.1:8080) öffnen. Der lokale Server e
 
 ## Selbst hosten
 
-Diese achtzehn Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
+Diese neunzehn Dateien gemeinsam in einen Ordner auf einem beliebigen statischen Webserver hochladen:
 
 ```text
 index.html
@@ -49,7 +49,7 @@ Die öffentliche Adresse ist [gorillas.sparebytes.dev](https://gorillas.sparebyt
 
 Jeder Push auf `main` löst über die vorhandene GitHub-App einen Build in Coolify aus. Nixpacks führt `npm test && npm run build` aus; anschließend liefert Nginx ausschließlich das Verzeichnis `/dist` über HTTPS aus. Für Pull Requests von Repository-Inhabern, Mitgliedern und Collaborators erstellt Coolify automatisch eine isolierte Vorschau unter `https://<PR-NUMMER>.gorillas.sparebytes.dev`; Fork-PRs fremder Personen werden nicht automatisch ausgeführt.
 
-Der Build benötigt Node.js 22 oder neuer und kopiert nur die achtzehn Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
+Der Build benötigt Node.js 22 oder neuer und kopiert nur die neunzehn Spieldateien. Die Version aus `package.json` und die kurze Commit-ID erscheinen im Footer; `/version.json` enthält beide Werte maschinenlesbar. Dafür muss in Coolify unter **Advanced → Source commit availability** die Option **Available during build** gesetzt sein. Lokal lässt sich die Ausgabe mit `npm run build` erzeugen. Ohne Build bleibt der direkte Dateistart möglich.
 
 ## Neu in Version 1.4: Classic
 
@@ -125,7 +125,7 @@ Noch stärkeres indirektes Umgebungslicht und ein geringerer Anteil direkten Son
 
 Eine zwischengespeicherte Schattenkarte bildet Gebäude, Dachdetails, Bäume und Schäden auf Straßen, Fassaden und Grünflächen ab. Neun Tiefenvergleiche glätten die Schattenränder. Die Karte (1024 × 1024, RGBA plus 16-Bit-Tiefe, ca. 6 MiB) wird beim Stadtaufbau, nach Schäden oder bei einer veränderten Uhrzeit aktualisiert: ein zusätzlicher Zeichenaufruf in diesen Bildern, weiterhin drei in normalen Bildern. Bewegte Dekoration wirft keine eigenen Schatten. Ohne ausreichende Shader-Präzision oder vollständiges Schattenziel bleibt die direkte Beleuchtung nutzbar. Im Replay wird vor dem Einschlag nur die direkte Beleuchtung verwendet, damit der neue Krater keinen Schatten auf den alten Gebäudezustand wirft.
 
-Ab 22 Uhr gehen nach und nach mehr Wohnungslichter aus; zwischen 2 und 4 Uhr bleibt nur etwa ein Fünftel der abendlichen Fensterbeleuchtung an. Zum Morgen steigt die Belegung wieder. Straßenlaternen, Fahrzeuglichter und einzelne ruhige Neon-Schilder bleiben eingeschaltet. Größere Lichtflächen, zusätzliche Hauseingangsleuchten und ein sanfter, spielerfarbener Lichtsaum um die Gorillas machen die Nacht besser lesbar. Explosionen besitzen nachts einen hellen Kern, leuchtende Funken und einen lokal begrenzten, rasch abklingenden Lichtschein auf benachbarten Flächen. Der zusätzliche Blitz entfällt bei reduzierter Bewegung; Replay und Hauptansicht verwenden jeweils ihr eigenes Explosionsalter. Alle Effekte bleiben in den vorhandenen Zeichenaufrufen.
+Ab 22 Uhr gehen nach und nach mehr Wohnungslichter aus; zwischen 2 und 4 Uhr bleibt nur etwa ein Fünftel der abendlichen Fensterbeleuchtung an. Zum Morgen steigt die Belegung wieder. Straßenlaternen, Fahrzeuglichter und einzelne ruhige Neon-Schilder bleiben eingeschaltet. Größere Lichtflächen, zusätzliche Hauseingangsleuchten und das spielerfarbene Licht der Gorillas auf nahen Flächen machen die Nacht besser lesbar. Explosionen besitzen nachts einen hellen Kern, leuchtende Funken und einen lokal begrenzten, rasch abklingenden Lichtschein auf benachbarten Flächen. Der zusätzliche Blitz entfällt bei reduzierter Bewegung; Replay und Hauptansicht verwenden jeweils ihr eigenes Explosionsalter. Alle Effekte bleiben in den vorhandenen Zeichenaufrufen.
 
 Fenster verwenden unabhängige, deterministische Belegungen je Fensterfläche statt periodischer Zeilenmuster. Einzelne Fenster wechseln mit versetzten Intervallen von 28–90 Sekunden sanft ihre Beleuchtung; in der Dämmerung sind mehr belegt als mittags. Pause und reduzierte Bewegung frieren diese Wechsel ohne Aufholsprung ein. Beim Verschieben des Uhrzeitreglers ändern sich Lichtwerte und Schattenkarte, ohne die Stadtgeometrie neu aufzubauen. Dafür sind weder zusätzliche Geometrie-Uploads noch Zeichenaufrufe nötig. Der Nebel beginnt erst außerhalb der Stadt und hängt nicht mehr vom Kameraabstand ab.
 
