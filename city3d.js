@@ -91,6 +91,7 @@
         uniform vec3 uSun,uAmbient,uDirect,uFog,uCenter,uEye;
         uniform vec4 uFlash; uniform float uFlashRadius;
         uniform vec4 uActorLight0,uActorLight1;
+        uniform float uActorGlow;
         uniform float uWindowTime,uWindowRate,uSeed,uShadowEnabled,uShore,uArtificial;
         uniform sampler2D uShadowMap;
         varying vec3 vWorld,vNormal,vColor; varying vec4 vShadow; varying float vMaterial;
@@ -129,7 +130,7 @@
           if(size>4.5&&size<6.5)color=mix(vColor*light,vColor*1.15,uArtificial);
           if(size>6.5){
             // A small emissive contribution identifies the source without a glowing outline.
-            color=vColor*(light+vec3(.58)*uArtificial);
+            color=vColor*(light+vec3(uActorGlow));
           }
           if(size>1.5&&size<2.5){
             vec3 cell=vColor*179.0+n*137.0+uSeed;
@@ -152,7 +153,7 @@
       gl.deleteShader(vs); gl.deleteShader(fs); gl.useProgram(this.program);
       this.attributes = ['aPosition', 'aNormal', 'aColor'].map(n => gl.getAttribLocation(this.program, n));
       this.uMatrix = gl.getUniformLocation(this.program, 'uMatrix'); this.uEye = gl.getUniformLocation(this.program, 'uEye');
-      this.lightingUniforms=Object.fromEntries(['uLightMatrix','uSun','uAmbient','uDirect','uFog','uCenter','uWindowTime','uWindowRate','uSeed','uShadowEnabled','uShadowMap','uShore','uArtificial','uFlash','uFlashRadius','uActorLight0','uActorLight1'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
+      this.lightingUniforms=Object.fromEntries(['uLightMatrix','uSun','uAmbient','uDirect','uFog','uCenter','uWindowTime','uWindowRate','uSeed','uShadowEnabled','uShadowMap','uShore','uArtificial','uFlash','uFlashRadius','uActorLight0','uActorLight1','uActorGlow'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
       this.initShadows(shader);
       this.staticBuffer = gl.createBuffer(); this.dynamicBuffer = gl.createBuffer(); this.ambientBuffer = gl.createBuffer();
       gl.enable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA); gl.clearColor(0,0,0,0);
@@ -253,15 +254,23 @@
     }
     applyLighting(game) {
       const gl=this.gl,u=this.lightingUniforms,b=cityBounds(game),l=this.light;
-      this.setActorLights(game.gorillas);
+      this.setActorLights(game.gorillas, l);
       gl.uniformMatrix4fv(u.uLightMatrix,false,this.lightMatrix);
       for(const [name,value] of [['uSun',l.direction],['uAmbient',l.ambient],['uDirect',l.direct],['uFog',l.fog],['uCenter',[(b.left+b.right)/2,0,(b.back+b.front)/2]]])gl.uniform3fv(u[name],value);
       gl.uniform1f(u.uShore,b.shore);gl.uniform1f(u.uArtificial,l.artificial);
+      // Keep the actor readable at night, but lower its own emission during the
+      // bright dusk transition (around 18:00) where the surroundings are still lit.
+      const dusk=Math.max(0,Math.min(1,(l.windowRate-.25)/.75));
+      gl.uniform1f(u.uActorGlow,l.artificial*(.26+.24*(1-dusk)));
       gl.uniform1f(u.uWindowTime,this.windowTime||0);gl.uniform1f(u.uWindowRate,l.windowRate);gl.uniform1f(u.uSeed,l.seed);
       gl.uniform1f(u.uShadowEnabled,this.shadowsAvailable?1:0);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.shadowTexture);gl.uniform1i(u.uShadowMap,0);
     }
-    setActorLights(gorillas) {
-      gorillas.forEach((g,i)=>this.gl.uniform4f(this.lightingUniforms[`uActorLight${i}`],g.x,g.y+18,g.z,g.alive?1.8:0));
+    setActorLights(gorillas, light=this.light) {
+      const dusk=Math.max(0,Math.min(1,((light?.windowRate??0)-.25)/.75));
+      // Dusk already has substantial ambient and window light; keep the local
+      // pool readable without washing out the roof beneath the actor.
+      const strength=1.05+.45*(1-dusk);
+      gorillas.forEach((g,i)=>this.gl.uniform4f(this.lightingUniforms[`uActorLight${i}`],g.x,g.y+18,g.z,g.alive?strength:0));
     }
     setExplosionLight(hit,reduced) {
       const flash=explosionLight(hit,reduced),u=this.lightingUniforms;

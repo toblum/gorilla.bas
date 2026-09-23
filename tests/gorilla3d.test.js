@@ -73,5 +73,5 @@ test('Gorilla light sources follow roof height and switch off when an actor dies
  const r=Object.create(window.GorillaCity3D.prototype),calls=[];
  r.gl={uniform4f(...args){calls.push(args);}};r.lightingUniforms={uActorLight0:'orange',uActorLight1:'mint'};
  r.setActorLights([{x:1,y:100,z:3,alive:true},{x:4,y:200,z:6,alive:false}]);
- assert.deepEqual(calls,[['orange',1,118,3,1.8],['mint',4,218,6,0]]);
+ assert.deepEqual(calls,[['orange',1,118,3,1.5],['mint',4,218,6,0]]);
 });
