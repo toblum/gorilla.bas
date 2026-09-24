@@ -35,6 +35,13 @@
       this.lastFrame = '';
     }
     draw(time, reducedMotion) {
+      if (this.mode === '3d' && this.spatialRenderer?.lost) {
+        this.spatialFailed = true;
+        this.spatialRenderer = null;
+        this.canvas.hidden = false;
+        this.spatialCanvas.hidden = true;
+        this.lastFrame = '';
+      }
       // Freeze every animation component when reduced motion is requested.
       const tick = reducedMotion ? 12 : Math.floor(time / 80);
       const frame = `${this.mode}:${tick}`;

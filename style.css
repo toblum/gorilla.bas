@@ -15,6 +15,7 @@
 .brand{margin:0}.header-tools{display:flex;flex-direction:column;align-items:flex-end;gap:9px}.masthead .toolbar{width:auto;justify-content:flex-end}.console{margin-top:24px}
 .number-wrap:focus-within{outline:2px solid #c84621;outline-offset:2px}.number-wrap input:focus,.number-wrap input:focus-visible{outline:none}
 #winner-portrait,#winner-portrait-3d{width:84px;height:84px;margin:-8px auto 10px}
+#winner-portrait{image-rendering:pixelated}
 #winner-portrait-3d{image-rendering:auto}
 .result-card canvas[hidden],.welcome-scene canvas[hidden]{display:none}
 @media(max-width:640px){.masthead{flex-wrap:wrap;gap:12px;align-items:center}.header-tools{flex:1;min-width:155px;gap:4px}.header-tools .edition{display:none}.header-tools .toolbar{gap:16px}.console{margin-top:18px}#winner-portrait,#winner-portrait-3d{width:72px;height:72px}}

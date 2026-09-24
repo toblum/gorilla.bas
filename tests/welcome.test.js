@@ -40,6 +40,11 @@ test('Welcome: 3D mode renders the real city on its own canvas and restores the 
   assert.equal(draws.length, 1);
   assert.equal(draws[0].game.hour, 18);
   assert.equal(draws[0].aim.angle, 45);
+  welcome.spatialRenderer.lost = true;
+  welcome.draw(960, false);
+  assert.equal(canvas.hidden, false, 'the 2D fallback appears as soon as WebGL is lost');
+  assert.equal(spatialCanvas.hidden, true);
+  assert.ok(commands.length > 0, 'the fallback is drawn even within the same animation tick');
   welcome.setMode('2d');
   assert.equal(canvas.hidden, false);
   assert.equal(spatialCanvas.hidden, true);

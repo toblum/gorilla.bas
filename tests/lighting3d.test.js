@@ -62,6 +62,17 @@ test('Window identities are uniform across each pane, distinct and disappear wit
  for(let dz=0;dz<b.nz;dz++)b.removed.add(engine.cellIndex(b,Math.min(x,b.nx-1),y,dz));
  assert.ok(collect().length<before.length);
 });
+test('Rooftop designs leave a relocated wind marker clear',()=>{
+ const renderer=Object.create(rendererPrototype()),b=make().buildings.find(b=>b.player===undefined&&b.nx>=5&&b.nz>=5);
+ b.seed=3; // The water tank would otherwise occupy the middle four roof cells.
+ const boxes=[],mesh={box(...args){boxes.push(args);},line(){},quad(){}};
+ renderer.windSites=[];renderer.roofDetails(mesh,b);
+ assert.ok(boxes.some(box=>box[4]>=9),'the central roof design is normally present');
+ boxes.length=0;
+ renderer.windSites=[{x:b.x+2.5*engine.CELL,y:b.height,z:b.z+2.5*engine.CELL,type:'flag'}];
+ renderer.roofDetails(mesh,b);
+ assert.ok(boxes.every(box=>box[4]<9),'the central design is omitted around the marker');
+});
 test('Window clock freezes on pause/reduced motion, and shadows refresh only on city changes',()=>{
  const renderer=Object.create(rendererPrototype()),game=make();let shadows=0,builds=0;
  const noop=()=>{},gl=new Proxy({},{get:()=>noop});

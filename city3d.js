@@ -594,6 +594,9 @@
         m.box(b.x+x*C,y+.1,b.z+z*C,1.2,2.2,C,'#b9b9a7');
       if(!clear(2,2,2,2))return;
       const x=b.x+2*C,z=b.z+2*C,variant=b.seed%5;
+      // Wind markers move onto surviving cells after damage. Keep their bases and
+      // poles clear even when the chosen cell falls inside this design footprint.
+      if(this.windSites?.some(site=>site.y>1&&site.x>=x-2&&site.x<=x+19&&site.z>=z-2&&site.z<=z+18))return;
       if(variant===0){
         // Sawtooth glass skylight with a visible ridge.
         m.box(x,y+.5,z,16,1,16,'#7b8e8d');
