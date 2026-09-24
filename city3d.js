@@ -121,21 +121,20 @@
             float fog=smoothstep(850.0,2600.0,length(vWorld.xz-uCenter.xz));
             gl_FragColor=vec4(vColor,.48*uArtificial*(size-3.0)*(1.0-fog));return;
           }
-          if(size>8.5&&size<9.5){gl_FragColor=vec4(vColor,.13);return;}
           float sun=max(0.0,dot(n,uSun));
           vec3 light=uAmbient*(.83+.17*n.y)+uDirect*sun*visibility(n);
           float flash=max(0.0,1.0-distance(vWorld,uFlash.xyz)/uFlashRadius);
           light+=vec3(1.0,.57,.20)*flash*flash*uFlash.w;
-          float bananaGlow=max(0.0,1.0-distance(vWorld,uBananaLight.xyz)/58.0);
+          float bananaGlow=max(0.0,1.0-distance(vWorld,uBananaLight.xyz)/34.0);
           light+=vec3(1.0,.73,.25)*bananaGlow*bananaGlow*uBananaLight.w;
           if(size<6.5)light+=uArtificial*(actorLight(uActorLight0,vec3(1.0,.73,.48),n)+actorLight(uActorLight1,vec3(.69,1.0,.78),n));
           vec3 color=vColor*(size<.1?vec3(1.05):light);
           if(size>4.5&&size<6.5)color=mix(vColor*light,vColor*1.15,uArtificial);
-          if(size>6.5){
+          if(size>6.5&&size<7.5){
             // A small emissive contribution identifies the source without a glowing outline.
             color=vColor*(light+vec3(uActorGlow));
           }
-          if(size>7.0&&size<8.0)color=vColor*1.8;
+          if(size>10.5&&size<11.5)color=vColor*(light+vec3(.18));
           if(size>9.5&&size<10.5)color=vColor*(.9+.28*sin(uWindowTime*2.2+vWorld.x*.13));
           if(size>1.5&&size<2.5){
             vec3 cell=vColor*179.0+n*137.0+uSeed;
@@ -284,7 +283,7 @@
     }
     setBananaLight(shot) {
       if(!this.lightingUniforms)return;
-      this.gl.uniform4f(this.lightingUniforms.uBananaLight,shot?.x||0,shot?.y||0,shot?.z||0,shot?1.45:0);
+      this.gl.uniform4f(this.lightingUniforms.uBananaLight,shot?.x||0,shot?.y||0,shot?.z||0,shot ? (shot.charged ? .65 : .42) : 0);
     }
     countryside(m,{left,right,back,front}) {
       // Smooth low hills and farm clearings continue beyond the existing woodland ring.
@@ -628,14 +627,11 @@
       destination.appendRotated(m,[site.x,site.y,site.z],Math.PI/2,site.scale);
     }
     banana(m,s) {
-      for(let i=1;i<(s.trail?.length||0);i++) { const a=s.trail[i-1],b=s.trail[i];m.line([a.x,a.y,a.z],[b.x,b.y,b.z],.5+i/s.trail.length*1.3,s.charged?'#fff8b5':'#f7d492'); }
-      const haloStart=m.data.length;
-      m.sphere(s.x,s.y,s.z,s.charged?11:8,s.charged?'#fff5aa':'#ffdf7b',true);
-      for(let k=haloStart;k<m.data.length;k+=9)m.data[k+3]=9;
+      for(let i=1;i<(s.trail?.length||0);i++) { const a=s.trail[i-1],b=s.trail[i];m.line([a.x,a.y,a.z],[b.x,b.y,b.z],.4+i/s.trail.length*.65,s.charged?'#e7d985':'#bda36b'); }
       const rot=s.time*9;
       for(let i=0;i<5;i++) {const a=i*.5-1,xx=Math.cos(a)*5-3,yy=Math.sin(a)*5;const start=m.data.length;
         m.box(s.x+xx*Math.cos(rot)-yy*Math.sin(rot)-1,s.y+xx*Math.sin(rot)+yy*Math.cos(rot)-1,s.z-1,2.8,2.8,2.8,i===0?'#907144':'#ffe17a');
-        for(let k=start;k<m.data.length;k+=9)for(let axis=3;axis<6;axis++)m.data[k+axis]*=7.5;
+        for(let k=start;k<m.data.length;k+=9)for(let axis=3;axis<6;axis++)m.data[k+axis]*=11;
       }
     }
     explosion(m,hit,reduced) {
@@ -789,8 +785,7 @@
       const s=game.shot;
       if(s&&game.phase==='flying') {
         const p=this.project(s.x,s.y,s.z);const on=p.visible&&p.x>15&&p.x<w-15&&p.y>60&&p.y<h-20;
-        if(on){c.beginPath();c.arc(p.x,p.y,9,0,Math.PI*2);c.strokeStyle='#fff2b9';c.lineWidth=1.5;c.stroke();}
-        else {c.fillStyle='#263e46';c.fillRect(w/2-112,58,224,25);c.fillStyle='#ffdf91';c.font='bold 11px "Courier New"';c.textAlign='center';c.fillText(`BANANE ↗ ${Math.round(s.y)} m HÖHE`,w/2,75);}
+        if(!on){c.fillStyle='#263e46';c.fillRect(w/2-112,58,224,25);c.fillStyle='#ffdf91';c.font='bold 11px "Courier New"';c.textAlign='center';c.fillText(`BANANE ↗ ${Math.round(s.y)} m HÖHE`,w/2,75);}
       }
       // A north-up tactical map makes depth, azimuth and wind readable regardless of camera rotation.
       const mw=w<500?108:145,mh=mw*.72,mx=w-mw-14,my=h-mh-14,bounds=cityBounds(game),scale=Math.min((mw-16)/(bounds.right-bounds.left),(mh-16)/(bounds.front-bounds.back));

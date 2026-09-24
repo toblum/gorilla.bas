@@ -167,9 +167,17 @@ test('Explosion lights nearby surfaces by day and the flying banana has its own 
  r.setExplosionLight({x:4,y:30,z:6,radius:18,age:0},false);
  assert.ok(calls[0][4]>0,'daylight flash should illuminate the city');
  r.setBananaLight({x:10,y:50,z:12});
- assert.deepEqual(calls.at(-1),['banana',10,50,12,1.45]);
+ assert.deepEqual(calls.at(-1),['banana',10,50,12,.42]);
  r.setBananaLight(null);
  assert.equal(calls.at(-1)[4],0);
  r.setExplosionLight({x:4,y:30,z:6,radius:18,age:0},true);
  assert.equal(calls.at(-1)[4],0);
+});
+test('Banana keeps its curved geometry without an opaque halo or the gorilla material tag',()=>{
+ const r=Object.create(rendererPrototype()),mesh={data:[],line(){},box(){this.data.push(0,0,0,1,0,0,1,1,1);},sphere(){throw Error('halo sphere hides the banana');}};
+ r.banana(mesh,{x:0,y:40,z:0,time:.3,trail:[],charged:false});
+ assert.equal(mesh.data.length/9,5);
+ for(let i=0;i<mesh.data.length;i+=9)assert.equal(Math.hypot(...mesh.data.slice(i+3,i+6)),11);
+ const gorillaMesh={data:[]};require('../gorilla3d.js').append(gorillaMesh,{x:0,y:0,z:0,alive:true,heading:0},0,0,0,true);
+ assert.equal(Math.hypot(...gorillaMesh.data.slice(3,6)),7);
 });
