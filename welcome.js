@@ -2,7 +2,9 @@
 (function (root) {
   'use strict';
   class GorillaWelcome {
-    constructor(canvas) {
+    constructor(canvas, spatialCanvas = null) {
+      this.canvas = canvas;
+      this.spatialCanvas = spatialCanvas;
       this.ctx = canvas.getContext('2d');
       this.mode = '2d';
       this.lastFrame = '';
@@ -13,13 +15,42 @@
       root.GorillasClassic.drawSun(sunScreen);
       this.classicSun = sunScreen.get(298, 7, 45, 37);
     }
-    setMode(mode) { this.mode = mode; }
+    setMode(mode) {
+      this.mode = mode;
+      // The 3D preview uses the same city renderer and models as the match.
+      if (mode === '3d' && this.spatialCanvas && !this.spatialFailed && !this.spatialRenderer) {
+        try {
+          let seed = 3847;
+          const random = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
+          this.spatialGame = new root.Gorillas3D.Game3D({}, random);
+          this.spatialGame.setDayHour(18);
+          this.spatialRenderer = new root.GorillaCity3D(this.spatialCanvas, document.createElement('canvas'));
+          this.spatialRenderer.drawHUD = () => {};
+          this.spatialRenderer.drawReplay = () => {};
+        } catch { this.spatialFailed = true; }
+      }
+      const show3d = mode === '3d' && Boolean(this.spatialRenderer);
+      this.canvas.hidden = show3d;
+      if (this.spatialCanvas) this.spatialCanvas.hidden = !show3d;
+      this.lastFrame = '';
+    }
     draw(time, reducedMotion) {
+      if (this.mode === '3d' && this.spatialRenderer?.lost) {
+        this.spatialFailed = true;
+        this.spatialRenderer = null;
+        this.canvas.hidden = false;
+        this.spatialCanvas.hidden = true;
+        this.lastFrame = '';
+      }
       // Freeze every animation component when reduced motion is requested.
       const tick = reducedMotion ? 12 : Math.floor(time / 80);
       const frame = `${this.mode}:${tick}`;
       if (this.lastFrame === frame) return;
       this.lastFrame = frame;
+      if (this.mode === '3d' && this.spatialRenderer) {
+        this.spatialRenderer.draw(this.spatialGame, time, { angle: 45, direction: 0, power: 65 }, reducedMotion);
+        return;
+      }
       const t = (tick % 48) / 48, reverse = Math.floor(tick / 48) % 2;
       const progress = reverse ? 1 - t : t;
       const pose = ['left', 'both', 'right', 'both'][Math.floor(tick / 4) % 4];

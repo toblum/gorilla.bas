@@ -1,0 +1,14 @@
+<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>3D-Stadtbild prüfen</title>
+<link rel="stylesheet" href="../style.css"><style>body{padding:16px}main{max-width:1100px;margin:auto}nav{display:flex;gap:10px;margin:12px 0}button{padding:8px}.scene{position:relative}#game3d{height:650px}#report{font:13px monospace}</style>
+<main><h1>3D-Stadtbild: Schilder und Dächer</h1><nav><button id="day">Tag / Nacht</button><button id="left">Westliche Straße</button><button id="center">Stadtmitte</button><button id="right">Östliche Straße</button></nav><pre id="report"></pre><div class="scene"><canvas id="game3d"></canvas><canvas id="hud3d"></canvas></div></main>
+<script src="../engine.js"></script><script src="../engine3d.js"></script><script src="../view3d.js"></script><script src="../gorilla3d.js"></script><script src="../city3d.js"></script><script>
+let seed=271828;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+const $=id=>document.getElementById(id),game=new Gorillas3D.Game3D({},random),renderer=new GorillaCity3D($('game3d'),$('hud3d'));
+game.setDayHour(21);let focus=0;
+renderer.camera.update=()=>({yaw:.18,pitch:.37,distance:370,target:[focus,70,60]});
+$('day').onclick=()=>game.setDayHour(game.dayHour===21?12:21);
+$('left').onclick=()=>focus=-120;$('center').onclick=()=>focus=0;$('right').onclick=()=>focus=220;
+function frame(t){renderer.draw(game,t,{angle:45,power:80,direction:0},false,false);
+ $('report').textContent=JSON.stringify({hour:game.dayHour,focus,webglError:renderer.gl.getError(),drawCalls:renderer.drawCalls});requestAnimationFrame(frame);
+}requestAnimationFrame(frame);
+</script></html>

@@ -15,7 +15,8 @@
   const palette = [ ['#667b78', '#81918a'], ['#b78377', '#c69583'], ['#797986', '#94909a'], ['#445e64', '#60787c'] ];
   const colors = ['#f3854e', '#b9d4b6'];
   let drawnRound = 0, drawnTerrain = -1, previousPhase = '', previousTime = 0, uiDirty = true, ambientTimer = 3.5;
-  const welcome = new window.GorillaWelcome($('welcome-art'));
+  const welcome = new window.GorillaWelcome($('welcome-art'), $('welcome-3d'));
+  let winnerPortrait3d = null, winnerPortraitFailed = false;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const sessionKey = 'gorillas-session-v1';
   let started = false, savedInputs = null, savedCamera = null, saveTimer = 0, finale = null, savedFinaleAge = 0, sceneryTime = 0;
@@ -234,10 +235,22 @@
     if (game.impact) drawExplosion(ctx, game.impact, game.wind, reducedMotion);
     }
     if (!$('result').hidden && game.winner !== null) {
-      const portrait = $('winner-portrait').getContext('2d');
-      portrait.clearRect(0, 0, 144, 144); portrait.save(); portrait.scale(3, 3);
-      const pose = reducedMotion ? 'both' : ['left', 'both', 'right', 'both'][Math.floor(time / 220) % 4];
-      drawGorilla(portrait, 24, 9, game.winner, pose); portrait.restore();
+      let drawn3d = false;
+      if (mode === '3d' && !winnerPortraitFailed) {
+        try {
+          winnerPortrait3d ||= new window.GorillaModel3D.Portrait($('winner-portrait-3d'));
+          $('winner-portrait-3d').hidden = false;
+          drawn3d = winnerPortrait3d.draw(game.winner, time, reducedMotion);
+        } catch { winnerPortraitFailed = true; }
+      }
+      $('winner-portrait-3d').hidden = !drawn3d;
+      $('winner-portrait').hidden = drawn3d;
+      if (!drawn3d) {
+        const portrait = $('winner-portrait').getContext('2d');
+        portrait.clearRect(0, 0, 144, 144); portrait.save(); portrait.scale(3, 3);
+        const pose = reducedMotion ? 'both' : ['left', 'both', 'right', 'both'][Math.floor(time / 220) % 4];
+        drawGorilla(portrait, 24, 9, game.winner, pose); portrait.restore();
+      }
     }
     if ($('settings').open) {
       welcome.draw(time, reducedMotion);
@@ -279,7 +292,7 @@
       $('result-description').textContent = `${selfHit ? 'Oh nein, ein Selbsttreffer! ' : ''}${matchOver ? `Endstand ${game.scores[0]} : ${game.scores[1]}. Zeit für eine Revanche?` : 'Neue Skyline, neuer Wind. Auf in die nächste Runde.'}`;
       $('continue').textContent = matchOver ? 'Revanche spielen →' : 'Nächste Runde →';
       $('message').textContent = celebrating ? `${name} feiert seinen Treffer!` : $('result-title').textContent;
-      $('winner-portrait').setAttribute('aria-label', `${name} jubelt mit erhobenen Armen`);
+      for (const id of ['winner-portrait', 'winner-portrait-3d']) $(id).setAttribute('aria-label', `${name} jubelt mit erhobenen Armen`);
       if (!celebrating && game.phase !== 'matchOver' && !$('settings').open) $('continue').focus({ preventScroll: true });
       if (game.phase === 'matchOver' && (mode !== '3d' || !renderer3d?.replay)) startFinale();
     } else {

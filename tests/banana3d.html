@@ -1,0 +1,18 @@
+<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>3D-Banane prüfen</title>
+<link rel="stylesheet" href="../style.css"><style>body{padding:20px}main{max-width:1000px;margin:auto}nav{display:flex;gap:12px;margin:12px 0}button{padding:10px}.scene{position:relative}#game3d{height:560px}#report{font:13px monospace}</style>
+<main><h1>3D-Banane: Form und Glühen</h1><nav><button id="night">Nacht / Tag</button><button id="charged">Aufladung an / aus</button><button id="pause">Pause / Fortsetzen</button></nav><pre id="report"></pre><div class="scene"><canvas id="game3d"></canvas><canvas id="hud3d"></canvas></div></main>
+<script src="../engine.js"></script><script src="../engine3d.js"></script><script src="../view3d.js"></script><script src="../gorilla3d.js"></script><script src="../city3d.js"></script><script>
+const $=id=>document.getElementById(id),game=new Gorillas3D.Game3D({},()=>.5),renderer=new GorillaCity3D($('game3d'),$('hud3d'));
+game.setDayHour(15);game.fire(45,80,0);game.options.replay=false;
+const shot=game.shot;shot.x=(game.gorillas[0].x+game.gorillas[1].x)/2;shot.y=150;shot.z=(game.gorillas[0].z+game.gorillas[1].z)/2;
+shot.trail=[];let paused=false,previous=0;
+renderer.camera.update=()=>({yaw:.55,pitch:.22,distance:105,target:[shot.x,shot.y,shot.z]});
+$('night').onclick=()=>game.setDayHour(game.dayHour===3?15:3);
+$('charged').onclick=()=>{shot.charged=!shot.charged;};
+$('pause').onclick=()=>{paused=!paused;};
+function frame(t){const dt=previous?Math.min(50,t-previous):0;previous=t;if(!paused)shot.time+=dt/1000;
+ renderer.draw(game,t,{angle:45,power:80,direction:0},false,paused);
+ $('report').textContent=JSON.stringify({hour:game.dayHour,charged:shot.charged,paused,webglError:renderer.gl.getError(),drawCalls:renderer.drawCalls});
+ requestAnimationFrame(frame);
+}requestAnimationFrame(frame);
+</script></html>

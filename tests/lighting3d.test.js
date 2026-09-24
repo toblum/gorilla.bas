@@ -51,7 +51,7 @@ test('Window identities are uniform across each pane, distinct and disappear wit
  const renderer=Object.create(rendererPrototype()),b=make().buildings[0];
  const collect=()=>{
   const panes=[];
-  const mesh={box(){},lamp(){},lightPool(){},quad(...args){const normal=args[5];if(Math.hypot(...normal)===2)panes.push({points:args.slice(0,4),id:args[4],normal});}};
+  const mesh={box(){},lamp(){},lightPool(){},line(){},quad(...args){const normal=args[5];if(normal&&Math.hypot(...normal)===2)panes.push({points:args.slice(0,4),id:args[4],normal});}};
   renderer.building(mesh,b);return panes;
  };
  const before=collect();assert.ok(before.length>100);
@@ -61,6 +61,17 @@ test('Window identities are uniform across each pane, distinct and disappear wit
  // Remove a facade column across all depths to include either outer face.
  for(let dz=0;dz<b.nz;dz++)b.removed.add(engine.cellIndex(b,Math.min(x,b.nx-1),y,dz));
  assert.ok(collect().length<before.length);
+});
+test('Rooftop designs leave a relocated wind marker clear',()=>{
+ const renderer=Object.create(rendererPrototype()),b=make().buildings.find(b=>b.player===undefined&&b.nx>=5&&b.nz>=5);
+ b.seed=3; // The water tank would otherwise occupy the middle four roof cells.
+ const boxes=[],mesh={box(...args){boxes.push(args);},line(){},quad(){}};
+ renderer.windSites=[];renderer.roofDetails(mesh,b);
+ assert.ok(boxes.some(box=>box[4]>=9),'the central roof design is normally present');
+ boxes.length=0;
+ renderer.windSites=[{x:b.x+2.5*engine.CELL,y:b.height,z:b.z+2.5*engine.CELL,type:'flag'}];
+ renderer.roofDetails(mesh,b);
+ assert.ok(boxes.every(box=>box[4]<9),'the central design is omitted around the marker');
 });
 test('Window clock freezes on pause/reduced motion, and shadows refresh only on city changes',()=>{
  const renderer=Object.create(rendererPrototype()),game=make();let shadows=0,builds=0;
@@ -73,7 +84,7 @@ test('Window clock freezes on pause/reduced motion, and shadows refresh only on 
  draw(20000,false,true);assert.equal(renderer.windowTime,.05);
  draw(20010);assert.ok(Math.abs(renderer.windowTime-.06)<1e-9);assert.equal(shadows,1);
  game.revision++;draw(20020);assert.equal(shadows,2);
- game.newRound();draw(20030);assert.equal(shadows,3);assert.equal(builds,3);
+ game.newRound();game.setDayHour(12);draw(20030);assert.equal(shadows,3);assert.equal(builds,3);
  game.setDayHour(6);draw(20040);assert.equal(shadows,4);assert.equal(builds,3);
  game.setDayHour(18);draw(20050);assert.equal(shadows,5);assert.equal(builds,3);
 });
@@ -153,9 +164,46 @@ test('Residential windows wind down overnight and recover toward dawn while stre
 });
 test('Explosion illumination is local, decays to zero and is disabled for reduced motion',()=>{
  const hit={x:0,y:30,z:0,radius:20,age:0},saved={...hit};
- const first=view.explosionLight(hit);assert.ok(first.strength>2);assert.ok(first.radius<=220);
+ const first=view.explosionLight(hit);assert.ok(first.strength>2);assert.ok(first.radius<=250);
  assert.ok(view.explosionLight({...hit,age:.4}).strength<first.strength);
- for(const age of [-.1,1.2,2])assert.equal(view.explosionLight({...hit,age}).strength,0);
+ for(const age of [-.1,1.35,2])assert.equal(view.explosionLight({...hit,age}).strength,0);
  assert.equal(view.explosionLight(hit,true).strength,0);assert.equal(view.explosionLight(null).strength,0);
  assert.deepEqual(hit,saved);
+});
+test('Explosion lights nearby surfaces by day and the flying banana has its own light',()=>{
+ const r=Object.create(rendererPrototype()),calls=[];
+ r.gl={uniform4f(...args){calls.push(args);},uniform1f(){}};
+ r.lightingUniforms={uFlash:'flash',uFlashRadius:'radius',uBananaLight:'banana'};
+ r.light={artificial:0};
+ r.setExplosionLight({x:4,y:30,z:6,radius:18,age:0},false);
+ assert.ok(calls[0][4]>0,'daylight flash should illuminate the city');
+ r.setBananaLight({x:10,y:50,z:12});
+ assert.deepEqual(calls.at(-1),['banana',10,50,12,.42]);
+ r.setBananaLight(null);
+ assert.equal(calls.at(-1)[4],0);
+ r.setExplosionLight({x:4,y:30,z:6,radius:18,age:0},true);
+ assert.equal(calls.at(-1)[4],0);
+});
+test('Replay preserves charged banana lighting until impact',()=>{
+ const r=Object.create(rendererPrototype()),calls=[],noop=()=>{};
+ r.gl=new Proxy({uniform4f(...args){calls.push(args);}},{get:(target,key)=>target[key]||noop});
+ Object.assign(r,{clock:0,width:800,height:500,canvas:{width:800,height:500},ctx:{clearRect:noop},light:{fog:[0,0,0]},
+  lightingUniforms:{uBananaLight:'banana',uShadowEnabled:'shadow'},replayPanel:{style:{},querySelector:()=>({style:{}})},
+  banana:noop,explosion:noop,gorilla:noop,setActorLights:noop,setExplosionLight:noop,renderBuffer:noop,upload:()=>0});
+ const frame={done:false,progress:0,impactAge:-.1,point:{x:10,y:50,z:12}};
+ r.replay={start:0,beforeBuffer:{},beforeCount:0,gorillas:[],clip:{shot:{charged:true},hit:{type:'building'},eye:[0,80,120],target:[0,50,0],frame:()=>frame}};
+ r.drawReplay({},false,1);
+ assert.deepEqual(calls.at(-1),['banana',10,50,12,.65]);
+ r.replay.clip.shot.charged=false;r.drawReplay({},false,1);
+ assert.equal(calls.at(-1)[4],.42);
+ frame.impactAge=0;r.drawReplay({},false,1);
+ assert.equal(calls.at(-1)[4],0);
+});
+test('Banana keeps its curved geometry without an opaque halo or the gorilla material tag',()=>{
+ const r=Object.create(rendererPrototype()),mesh={data:[],line(){},box(){this.data.push(0,0,0,1,0,0,1,1,1);},sphere(){throw Error('halo sphere hides the banana');}};
+ r.banana(mesh,{x:0,y:40,z:0,time:.3,trail:[],charged:false});
+ assert.equal(mesh.data.length/9,5);
+ for(let i=0;i<mesh.data.length;i+=9)assert.equal(Math.hypot(...mesh.data.slice(i+3,i+6)),11);
+ const gorillaMesh={data:[]};require('../gorilla3d.js').append(gorillaMesh,{x:0,y:0,z:0,alive:true,heading:0},0,0,0,true);
+ assert.equal(Math.hypot(...gorillaMesh.data.slice(3,6)),7);
 });

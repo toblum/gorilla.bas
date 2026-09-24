@@ -89,7 +89,7 @@
       const fs = shader(gl.FRAGMENT_SHADER, `
         precision highp float;
         uniform vec3 uSun,uAmbient,uDirect,uFog,uCenter,uEye;
-        uniform vec4 uFlash; uniform float uFlashRadius;
+        uniform vec4 uFlash,uBananaLight; uniform float uFlashRadius;
         uniform vec4 uActorLight0,uActorLight1;
         uniform float uActorGlow;
         uniform float uWindowTime,uWindowRate,uSeed,uShadowEnabled,uShore,uArtificial;
@@ -125,13 +125,17 @@
           vec3 light=uAmbient*(.83+.17*n.y)+uDirect*sun*visibility(n);
           float flash=max(0.0,1.0-distance(vWorld,uFlash.xyz)/uFlashRadius);
           light+=vec3(1.0,.57,.20)*flash*flash*uFlash.w;
+          float bananaGlow=max(0.0,1.0-distance(vWorld,uBananaLight.xyz)/34.0);
+          light+=vec3(1.0,.73,.25)*bananaGlow*bananaGlow*uBananaLight.w;
           if(size<6.5)light+=uArtificial*(actorLight(uActorLight0,vec3(1.0,.73,.48),n)+actorLight(uActorLight1,vec3(.69,1.0,.78),n));
           vec3 color=vColor*(size<.1?vec3(1.05):light);
           if(size>4.5&&size<6.5)color=mix(vColor*light,vColor*1.15,uArtificial);
-          if(size>6.5){
+          if(size>6.5&&size<7.5){
             // A small emissive contribution identifies the source without a glowing outline.
             color=vColor*(light+vec3(uActorGlow));
           }
+          if(size>10.5&&size<11.5)color=vColor*(light+vec3(.18));
+          if(size>9.5&&size<10.5)color=vColor*(.9+.28*sin(uWindowTime*2.2+vWorld.x*.13));
           if(size>1.5&&size<2.5){
             vec3 cell=vColor*179.0+n*137.0+uSeed;
             float id=hash(cell),period=28.0+hash(cell+17.0)*62.0;
@@ -153,7 +157,7 @@
       gl.deleteShader(vs); gl.deleteShader(fs); gl.useProgram(this.program);
       this.attributes = ['aPosition', 'aNormal', 'aColor'].map(n => gl.getAttribLocation(this.program, n));
       this.uMatrix = gl.getUniformLocation(this.program, 'uMatrix'); this.uEye = gl.getUniformLocation(this.program, 'uEye');
-      this.lightingUniforms=Object.fromEntries(['uLightMatrix','uSun','uAmbient','uDirect','uFog','uCenter','uWindowTime','uWindowRate','uSeed','uShadowEnabled','uShadowMap','uShore','uArtificial','uFlash','uFlashRadius','uActorLight0','uActorLight1','uActorGlow'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
+      this.lightingUniforms=Object.fromEntries(['uLightMatrix','uSun','uAmbient','uDirect','uFog','uCenter','uWindowTime','uWindowRate','uSeed','uShadowEnabled','uShadowMap','uShore','uArtificial','uFlash','uFlashRadius','uBananaLight','uActorLight0','uActorLight1','uActorGlow'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
       this.initShadows(shader);
       this.staticBuffer = gl.createBuffer(); this.dynamicBuffer = gl.createBuffer(); this.ambientBuffer = gl.createBuffer();
       gl.enable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA); gl.clearColor(0,0,0,0);
@@ -274,8 +278,12 @@
     }
     setExplosionLight(hit,reduced) {
       const flash=explosionLight(hit,reduced),u=this.lightingUniforms;
-      this.gl.uniform4f(u.uFlash,hit?.x||0,hit?.y||0,hit?.z||0,flash.strength*(this.light?.artificial||0));
+      this.gl.uniform4f(u.uFlash,hit?.x||0,hit?.y||0,hit?.z||0,flash.strength*(.55+.45*(this.light?.artificial||0)));
       this.gl.uniform1f(u.uFlashRadius,flash.radius);
+    }
+    setBananaLight(shot) {
+      if(!this.lightingUniforms)return;
+      this.gl.uniform4f(this.lightingUniforms.uBananaLight,shot?.x||0,shot?.y||0,shot?.z||0,shot ? (shot.charged ? .65 : .42) : 0);
     }
     countryside(m,{left,right,back,front}) {
       // Smooth low hills and farm clearings continue beyond the existing woodland ring.
@@ -541,19 +549,83 @@
         // Paired sconces frame the entrance without adding real-time point lights.
         for(const side of [-1,1])m.lamp(x+side*5,7,z+.08,1,3,.5,'#ffd59b');
       }
-      // A few small neon signs on intact storefronts; static, never flashing.
-      if(b.seed%5===0&&[entry-1,entry,entry+1].every(x=>occupied(b,x,1,b.nz-1)&&occupied(b,x,2,b.nz-1))) {
-        const x=b.x+(entry+.5)*C-10,z=b.z+b.depth+.15,color=b.seed%2?'#f38bad':'#70d9dc';
-        m.box(x-1,10,z,22,12,.7,'#273c48');
-        const glyphs=['110101110101110','010101111101101','110101110101101']; // BAR
-        glyphs.forEach((bits,glyph)=>{for(let row=0;row<5;row++)for(let col=0;col<3;col++)if(bits[row*3+col]==='1')
-          m.lamp(x+glyph*7+col*1.7,19-row*1.7,z+.75,1.3,1.3,.3,color);
-        });
-        m.lightPool(x+10,3.06,z+2,15,3,color);
+      this.neonSigns(m,b);
+      this.roofDetails(m,b);
+    }
+    neonSigns(m,b) {
+      const words=['BAR','CAFE','KINO','JAZZ','HOTEL','CLUB'];
+      const glyphs={A:'010101111101101',B:'110101110101110',C:'011100100100011',E:'111100110100111',F:'111100110100100',H:'101101111101101',I:'111010010010111',J:'001001001101010',K:'101101110101101',L:'100100100100111',N:'101111111111101',O:'010101101101010',R:'110101110101101',T:'111010010010010',U:'101101101101111',Z:'111001010100111'};
+      const colors=['#f28ba9','#71dce0','#f4cf78','#b69cf1','#a9e7a4','#ffad78'];
+      const sign=(face,word,color,level)=>{
+        const side=face==='side',start=Math.floor((side?b.nz:b.nx)/2),edge=side?b.nx-1:b.nz-1;
+        const intact=[start-2,start-1,start,start+1,start+2].every(i=>i>=0&&i<(side?b.nz:b.nx)&&
+          occupied(b,side?edge:i,level,side?i:edge)&&occupied(b,side?edge:i,level+1,side?i:edge));
+        if(!intact)return;
+        const width=word.length*5+5,y=level*CELL+2,u=(side?b.z+b.depth/2:b.x+b.width/2)-width/2;
+        const x=b.x+b.width+.18,z=b.z+b.depth+.18;
+        if(side)m.box(x,y-1,u-1,.7,13,width+2,'#263d47');
+        else m.box(u-1,y-1,z,width+2,13,.7,'#263d47');
+        for(let letter=0;letter<word.length;letter++){
+          const bits=glyphs[word[letter]];
+          for(let row=0;row<5;row++)for(let col=0;col<3;col++)if(bits[row*3+col]==='1'){
+            const a=u+3+letter*5+col*1.35,b=y+9-row*1.7;
+            if(side)m.quad([x+.74,b,a],[x+.74,b,a+1.1],[x+.74,b+1.25,a+1.1],[x+.74,b+1.25,a],color,[10,0,0]);
+            else m.quad([a,b,z+.74],[a+1.1,b,z+.74],[a+1.1,b+1.25,z+.74],[a,b+1.25,z+.74],color,[0,0,10]);
+          }
+        }
+        // A small corner motif breaks up the row of lettering without adding another light source.
+        if(side)m.lamp(x+.75,y+4,u+width-1,.5,3,.5,color);
+        else m.lamp(u+width-1,y+4,z+.75,.5,3,.5,color);
+      };
+      const primary=b.seed%words.length;
+      if(b.seed%2===0&&b.ny>3)sign('front',words[primary],colors[primary],Math.min(1+b.seed%3,b.ny-3));
+      if(b.seed%5===1&&b.ny>4)sign('side',words[(primary+2)%words.length],colors[(primary+3)%colors.length],Math.min(2+b.seed%3,b.ny-3));
+    }
+    roofDetails(m,b) {
+      if(b.player!==undefined)return;
+      const y=b.height,top=b.ny-1,C=CELL;
+      const clear=(x,z,w=1,d=1)=>{
+        for(let dz=0;dz<d;dz++)for(let dx=0;dx<w;dx++)if(!occupied(b,x+dx,top,z+dz))return false;
+        return true;
+      };
+      if(b.seed%3!==0)for(let x=0;x<b.nx;x++)for(const z of [0,b.nz-1])if(clear(x,z))
+        m.box(b.x+x*C,y+.1,b.z+z*C,C,2.2,1.2,'#b9b9a7');
+      if(b.seed%3===2)for(let z=1;z<b.nz-1;z++)for(const x of [0,b.nx-1])if(clear(x,z))
+        m.box(b.x+x*C,y+.1,b.z+z*C,1.2,2.2,C,'#b9b9a7');
+      if(!clear(2,2,2,2))return;
+      const x=b.x+2*C,z=b.z+2*C,variant=b.seed%5;
+      // Wind markers move onto surviving cells after damage. Keep their bases and
+      // poles clear even when the chosen cell falls inside this design footprint.
+      if(this.windSites?.some(site=>site.y>1&&site.x>=x-2&&site.x<=x+19&&site.z>=z-2&&site.z<=z+18))return;
+      if(variant===0){
+        // Sawtooth glass skylight with a visible ridge.
+        m.box(x,y+.5,z,16,1,16,'#7b8e8d');
+        m.quad([x,y+2,z],[x+8,y+8,z],[x+8,y+8,z+16],[x,y+2,z+16],'#7fb1b6');
+        m.quad([x+8,y+8,z],[x+16,y+2,z],[x+16,y+2,z+16],[x+8,y+8,z+16],'#a8cfca');
+        m.line([x+8,y+8,z],[x+8,y+8,z+16],1.3,'#e2d5b3');
+      } else if(variant===1){
+        // Planted roof terrace with two raised beds and a light pergola.
+        for(const dx of [0,9]){m.box(x+dx,y+1,z,7,3,15,'#9b7865');m.box(x+dx+.6,y+4,z+.6,5.8,1,13.8,'#799b6e');}
+        for(const dx of [1,14])for(const dz of [1,14])m.box(x+dx,y+1,z+dz,1,12,1,'#8c8068');
+        for(const dz of [1,8,14])m.box(x,y+13,z+dz,16,1,1,'#bba887');
+      } else if(variant===2){
+        // A pair of inclined solar panels reads as a dark blue roof band.
+        for(const dz of [0,9]){
+          m.box(x,y+1,z+dz,16,2,7,'#647b7b');
+          m.quad([x,y+3,z+dz],[x+16,y+3,z+dz],[x+16,y+8,z+dz+7],[x,y+8,z+dz+7],'#456b86');
+          for(const dx of [5,10])m.line([x+dx,y+3,z+dz],[x+dx,y+8,z+dz+7],.5,'#a3bcc1');
+        }
+      } else if(variant===3){
+        // Elevated water tank and service ladder add a distinct skyline shape.
+        for(const dx of [2,12])for(const dz of [2,12])m.box(x+dx,y+1,z+dz,1.5,12,1.5,'#708380');
+        m.box(x+1,y+12,z+1,14,9,14,'#a2aaa0');m.box(x,y+20,z,16,2,16,'#d0c4a5');
+        for(let h=3;h<18;h+=3)m.line([x+1,y+h,z-.5],[x+5,y+h,z-.5],.6,'#d8caaa');
+      } else {
+        // Ventilation housings and ducts form a low industrial roofscape.
+        m.box(x,y+1,z,11,8,10,'#879a95');m.box(x+1,y+9,z+1,9,1,8,'#bdc3b0');
+        for(const dz of [2,4,6,8])m.box(x+11.05,y+3,z+dz,1,3,.6,'#4c666c');
+        m.box(x+11,y+1,z+11,5,5,5,'#697f7c');m.box(x+12,y+6,z+12,3,1,3,'#b9c2b1');
       }
-      // Roof details sit only on intact roof voxels, including after explosions.
-      if(occupied(b,1,b.ny-1,1)) { m.box(b.x+9,b.height+1,b.z+9,6,4,6,'#80928b');m.box(b.x+9,b.height+5,b.z+9,6,1,6,'#b4bca8'); }
-      if(b.player===undefined && occupied(b,b.nx-2,b.ny-1,b.nz-2)) m.box(b.x+b.width-12,b.height,b.z+b.depth-12,1,16,1,'#526960');
     }
     sun(m,game,eye,time,reduced) {
       if(this.light.sun.y<=0)return;
@@ -618,19 +690,27 @@
       destination.appendRotated(m,[site.x,site.y,site.z],Math.PI/2,site.scale);
     }
     banana(m,s) {
-      for(let i=1;i<(s.trail?.length||0);i++) { const a=s.trail[i-1],b=s.trail[i];m.line([a.x,a.y,a.z],[b.x,b.y,b.z],.5+i/s.trail.length*1.3,s.charged?'#fff8b5':'#f7d492'); }
+      for(let i=1;i<(s.trail?.length||0);i++) { const a=s.trail[i-1],b=s.trail[i];m.line([a.x,a.y,a.z],[b.x,b.y,b.z],.4+i/s.trail.length*.65,s.charged?'#e7d985':'#bda36b'); }
       const rot=s.time*9;
-      for(let i=0;i<5;i++) {const a=i*.5-1,xx=Math.cos(a)*5-3,yy=Math.sin(a)*5;m.box(s.x+xx*Math.cos(rot)-yy*Math.sin(rot)-1,s.y+xx*Math.sin(rot)+yy*Math.cos(rot)-1,s.z-1,2.8,2.8,2.8,i===0?'#907144':'#ffe17a');}
+      for(let i=0;i<5;i++) {const a=i*.5-1,xx=Math.cos(a)*5-3,yy=Math.sin(a)*5;const start=m.data.length;
+        m.box(s.x+xx*Math.cos(rot)-yy*Math.sin(rot)-1,s.y+xx*Math.sin(rot)+yy*Math.cos(rot)-1,s.z-1,2.8,2.8,2.8,i===0?'#907144':'#ffe17a');
+        for(let k=start;k<m.data.length;k+=9)for(let axis=3;axis<6;axis++)m.data[k+axis]*=11;
+      }
     }
     explosion(m,hit,reduced) {
       const t=hit.age;
       if(t<0||t>=1.7)return;
-      if(t<.35)m.sphere(hit.x,hit.y,hit.z,hit.radius*Math.sin(Math.min(1,t/.35)*Math.PI/2),t<.12?'#fff2b0':'#f2a154',true);
-      if(!reduced&&this.light?.artificial>.5&&t<.8){
-        const radius=hit.radius*(.38+.5*t)*(1-t/.8);
-        m.sphere(hit.x,hit.y,hit.z,Math.max(.1,radius),'#fff4cc',true);
+      if(t<.5)m.sphere(hit.x,hit.y,hit.z,Math.max(.1,hit.radius*(.3+.7*Math.sin(Math.min(1,t/.5)*Math.PI/2))),t<.16?'#fff3c1':'#f19a4e',true);
+      if(reduced)return;
+      if(t<.55){
+        const r=hit.radius*(.55+t*2.4),height=hit.y+2+t*10;
+        for(let i=0;i<20;i++){const a=i*Math.PI/10,b=(i+1)*Math.PI/10;
+          m.line([hit.x+Math.cos(a)*r,height,hit.z+Math.sin(a)*r],[hit.x+Math.cos(b)*r,height,hit.z+Math.sin(b)*r],Math.max(.3,2.3*(1-t/.55)),t<.24?'#ffe4a0':'#ef8d4b');}
       }
-      if(!reduced)for(let i=0;i<18;i++) { const a=i*2.399,r=hit.radius*(.6+t*2),x=hit.x+Math.cos(a)*r,z=hit.z+Math.sin(a)*r,y=hit.y+10+t*(25+i%5*8)-t*t*35,size=Math.max(.1,(1-t/1.7)*(i%3+1));if(i%3)m.lamp(x,y,z,size,size,size,'#ffbf65');else m.box(x,y,z,size,size,size,'#65706a'); }
+      for(let i=0;i<24;i++) {const a=i*2.399,r=hit.radius*(.45+t*(1.2+i%4*.18)),x=hit.x+Math.cos(a)*r,z=hit.z+Math.sin(a)*r;
+        const y=hit.y+8+t*(23+i%5*7)-t*t*37,size=Math.max(.1,(1-t/1.7)*(i%3+1));
+        if(i%4)m.lamp(x,y,z,size,size,size,i%3?'#ffbd62':'#fff0b0');else m.box(x,y,z,size,size,size,'#65706a');
+      }
     }
     closeReplay() {
       if(this.replay)this.gl.deleteBuffer(this.replay.beforeBuffer);
@@ -661,6 +741,7 @@
       else this.explosion(mesh,{...clip.hit,age:impactAge},reduced);
       this.setActorLights(replay.gorillas.map((g,i)=>({...g,alive:g.alive&&(impactAge<0||clip.hit.type!=='gorilla'||clip.hit.player!==i)})));
       this.setExplosionLight({...clip.hit,age:impactAge},reduced);
+      this.setBananaLight(impactAge<0?{...frame.point,charged:clip.shot.charged}:null);
       this.ctx.clearRect(x-2,y-28,w+4,h+34);
       gl.enable(gl.SCISSOR_TEST);gl.scissor(left,bottom,width,height);gl.viewport(left,bottom,width,height);
       gl.clearColor(...this.light.fog,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.clearColor(0,0,0,0);
@@ -710,6 +791,7 @@
       this.cachedGame=game;this.revision=game.revision;
       this.applyLighting(game);
       this.setExplosionLight(game.impact,reduced);
+      this.setBananaLight(game.phase==='flying'?game.shot:null);
       // Match the sky to the haze at the far ground plane, including when orbiting.
       const horizonDistance=(3500-eye[1]*Math.sin(pose.pitch))/Math.cos(pose.pitch);
       const horizon=this.project(eye[0]-Math.sin(pose.yaw)*horizonDistance,0,eye[2]-Math.cos(pose.yaw)*horizonDistance);
@@ -766,8 +848,7 @@
       const s=game.shot;
       if(s&&game.phase==='flying') {
         const p=this.project(s.x,s.y,s.z);const on=p.visible&&p.x>15&&p.x<w-15&&p.y>60&&p.y<h-20;
-        if(on){c.beginPath();c.arc(p.x,p.y,9,0,Math.PI*2);c.strokeStyle='#fff2b9';c.lineWidth=1.5;c.stroke();}
-        else {c.fillStyle='#263e46';c.fillRect(w/2-112,58,224,25);c.fillStyle='#ffdf91';c.font='bold 11px "Courier New"';c.textAlign='center';c.fillText(`BANANE ↗ ${Math.round(s.y)} m HÖHE`,w/2,75);}
+        if(!on){c.fillStyle='#263e46';c.fillRect(w/2-112,58,224,25);c.fillStyle='#ffdf91';c.font='bold 11px "Courier New"';c.textAlign='center';c.fillText(`BANANE ↗ ${Math.round(s.y)} m HÖHE`,w/2,75);}
       }
       // A north-up tactical map makes depth, azimuth and wind readable regardless of camera rotation.
       const mw=w<500?108:145,mh=mw*.72,mx=w-mw-14,my=h-mh-14,bounds=cityBounds(game),scale=Math.min((mw-16)/(bounds.right-bounds.left),(mh-16)/(bounds.front-bounds.back));
