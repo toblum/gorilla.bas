@@ -33,7 +33,10 @@
   }
   function windsockSites(game) {
     const sites = [];
+    const [leftGorilla, rightGorilla] = [...game.gorillas].sort((a, b) => a.x - b.x);
     for (const b of game.buildings) {
+      // The spawn roofs remain reserved even after their gorilla has been hit.
+      if (b.player !== undefined || game.gorillas.some(g => g.x >= b.x && g.x <= b.x + b.width && g.z >= b.z && g.z <= b.z + b.depth)) continue;
       let site;
       for (let y = b.ny - 1; y >= 0 && !site; y--) {
         // Prefer a corner, away from a gorilla in the roof's centre.
@@ -42,12 +45,17 @@
           if (occupied(b, cx, y, cz)) { site = { x: b.x + (cx + .5) * CELL, y: (y + 1) * CELL, z: b.z + (cz + .5) * CELL }; break; }
         }
       }
-      if (site) sites.push(site);
+      if (site) sites.push({ ...site, building: b });
     }
+    const between = sites.filter(s => s.x > leftGorilla.x && s.x < rightGorilla.x);
+    const lineZ = x => leftGorilla.z + (rightGorilla.z - leftGorilla.z) * (x - leftGorilla.x) / (rightGorilla.x - leftGorilla.x);
+    between.sort((a, b) => (b.y - Math.abs(b.z - lineZ(b.x)) * .25) - (a.y - Math.abs(a.z - lineZ(a.x)) * .25) || a.x - b.x);
     sites.sort((a, b) => b.y - a.y || a.x - b.x || a.z - b.z);
+    const first = between[0] || sites[0];
+    const second = sites.find(s => s.building !== first?.building);
     const bounds = cityBounds(game);
-    return [...sites.slice(0, 2).map((site, i) => ({ ...site, scale: .9, type: i ? 'windsock' : 'flag' })),
-      ...[.16, .76].map((t, i) => ({ x: bounds.left + (bounds.right - bounds.left) * t, y: 1, z: bounds.shore + 21, scale: 1, type: i ? 'flag' : 'windsock' }))];
+    return [[first, 'flag'], [second, 'windsock']].filter(([site]) => site).map(([site, type]) => ({ x: site.x, y: site.y, z: site.z, scale: .9, type })).concat(
+      ...[.16, .76].map((t, i) => ({ x: bounds.left + (bounds.right - bounds.left) * t, y: 1, z: bounds.shore + 21, scale: 1, type: i ? 'flag' : 'windsock' })));
   }
   function windPose(wind, windZ) {
     const speed = Math.hypot(wind, windZ);

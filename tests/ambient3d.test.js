@@ -6,8 +6,8 @@ const make=()=>new Game3D({},()=>.5);
 test('Ambient life is bounded, deterministic and does not alter gameplay or consume randomness',()=>{
  const game=make(),before=game.snapshot();game.random=()=>{throw Error('Gameplay RNG consumed');};
  const life=new AmbientLife(game),other=new AmbientLife(game);
- assert.equal(life.actors.length,21);
- assert.equal(life.actors.filter(a=>['car','taxi','bus'].includes(a.kind)).length,14);
+ assert.equal(life.actors.length,26);
+ assert.equal(life.actors.filter(a=>['car','taxi','bus'].includes(a.kind)).length,18);
  for(let time=0;time<10000;time+=16){life.update(time);other.update(time);}
  assert.deepEqual(life.actors,other.actors);assert.deepEqual(game.snapshot(),before);
 });
@@ -49,7 +49,7 @@ test('Renderer reuses a bounded GPU batch; pause, reduced motion and damage do n
  Object.assign(renderer,{clock:0,gl:{bindBuffer(){},bufferData(){allocations++;},bufferSubData(){uploads++;}},renderBuffer(){draws++;}});
  const game=make();renderer.drawAmbient(game,false);
  assert.equal(allocations,1);assert.equal(uploads,1);assert.equal(draws,1);
- assert.ok(renderer.ambientData.length/27<3000,'triangle budget exceeded');
+ assert.ok(renderer.ambientData.length/27<3500,'triangle budget exceeded');
  const data=renderer.ambientData;const first=Array.from(data);
  renderer.clock=50;renderer.drawAmbient(game,false);assert.notDeepEqual(Array.from(data),first);
  const moved=Array.from(data);renderer.drawAmbient(game,false);assert.equal(uploads,2);

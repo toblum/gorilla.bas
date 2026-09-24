@@ -106,14 +106,22 @@ test('The new perimeter surrounds the two starting roofs and default aim faces t
     assert.ok(Math.cos(target)*v.vx+Math.sin(target)*v.vz>.9998);
   }
 });
-test('Windsocks occupy the two highest intact roofs and two beach positions; calm wind has no direction', () => {
+test('Wind markers avoid gorilla roofs and keep a marker between both gorillas', () => {
   const { windsockSites,windPose,cityBounds }=require('../engine3d.js');const g=make(),sites=windsockSites(g);
-  assert.equal(sites.length,4);assert.deepEqual(sites.slice(0,2).map(p=>p.y),g.buildings.map(b=>b.height).sort((a,b)=>b-a).slice(0,2));
+  assert.equal(sites.length,4);
+  const check=game=>{
+    const roofSites=windsockSites(game).slice(0,2),minX=Math.min(...game.gorillas.map(p=>p.x)),maxX=Math.max(...game.gorillas.map(p=>p.x));
+    assert.ok(roofSites.some(s=>s.x>minX&&s.x<maxX));
+    for(const site of roofSites){const building=game.buildings.find(b=>site.x>=b.x&&site.x<=b.x+b.width&&site.z>=b.z&&site.z<=b.z+b.depth);
+      assert.ok(building);assert.equal(building.player,undefined);assert.ok(game.terrainAt(site.x,site.y-.1,site.z));}
+  };
+  check(g);
   for(const s of sites.slice(0,2))assert.ok(g.terrainAt(s.x,s.y-.1,s.z));
   for(const s of sites.slice(2)){assert.ok(s.z>cityBounds(g).shore);assert.equal(s.scale,1);}
   assert.ok(sites[3].x-sites[2].x>300);
   for(const s of sites.slice(0,2))assert.equal(s.scale,.9);
-  const roof=sites[0];g.destroy(roof.x,roof.y,roof.z,28);for(const s of windsockSites(g).slice(0,2))assert.ok(g.terrainAt(s.x,s.y-.1,s.z));
+  const roof=sites[0];g.destroy(roof.x,roof.y,roof.z,28);check(g);
+  for(let i=0;i<100;i++){g.newRound();check(g);}
   assert.deepEqual(windPose(0,0),{x:0,z:0,extension:0,speed:0});
   const p=windPose(-3,4);assert.equal(p.x,-.6);assert.equal(p.z,.8);assert.ok(windPose(-12,8).extension>p.extension);
 });
@@ -124,6 +132,9 @@ test('Existing 24- and 48-block saves load without moving roofs or discarding sc
   saved.buildings=saved.buildings.filter(b=>b.x>=-270-ring*94&&b.x<294+ring*94&&b.z>=-170-ring*94&&b.z<206+ring*94);
   saved.gorillas.forEach(a=>delete a.heading);
   const restored=make();assert.ok(restored.restore(saved));assert.equal(restored.plots.length,ring?48:24);assert.deepEqual(restored.scores,[2,1]);
+  const roofSites=require('../engine3d.js').windsockSites(restored).slice(0,2);
+  assert.ok(roofSites.some(s=>s.x>restored.gorillas[0].x&&s.x<restored.gorillas[1].x));
+  assert.ok(roofSites.every(s=>restored.terrainAt(s.x,s.y-.1,s.z)));
   for(let i=0;i<2;i++){assert.equal(restored.gorillas[i].x,saved.gorillas[i].x);assert.equal(restored.gorillas[i].z,saved.gorillas[i].z);assert.ok(Number.isFinite(restored.gorillas[i].heading));}
   restored.newRound();assert.equal(restored.plots.length,80);assert.deepEqual(restored.scores,[2,1]);
   }

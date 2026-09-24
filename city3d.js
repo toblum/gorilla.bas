@@ -89,7 +89,7 @@
       const fs = shader(gl.FRAGMENT_SHADER, `
         precision highp float;
         uniform vec3 uSun,uAmbient,uDirect,uFog,uCenter,uEye;
-        uniform vec4 uFlash; uniform float uFlashRadius;
+        uniform vec4 uFlash,uBananaLight; uniform float uFlashRadius;
         uniform vec4 uActorLight0,uActorLight1;
         uniform float uActorGlow;
         uniform float uWindowTime,uWindowRate,uSeed,uShadowEnabled,uShore,uArtificial;
@@ -121,10 +121,13 @@
             float fog=smoothstep(850.0,2600.0,length(vWorld.xz-uCenter.xz));
             gl_FragColor=vec4(vColor,.48*uArtificial*(size-3.0)*(1.0-fog));return;
           }
+          if(size>8.5&&size<9.5){gl_FragColor=vec4(vColor,.13);return;}
           float sun=max(0.0,dot(n,uSun));
           vec3 light=uAmbient*(.83+.17*n.y)+uDirect*sun*visibility(n);
           float flash=max(0.0,1.0-distance(vWorld,uFlash.xyz)/uFlashRadius);
           light+=vec3(1.0,.57,.20)*flash*flash*uFlash.w;
+          float bananaGlow=max(0.0,1.0-distance(vWorld,uBananaLight.xyz)/58.0);
+          light+=vec3(1.0,.73,.25)*bananaGlow*bananaGlow*uBananaLight.w;
           if(size<6.5)light+=uArtificial*(actorLight(uActorLight0,vec3(1.0,.73,.48),n)+actorLight(uActorLight1,vec3(.69,1.0,.78),n));
           vec3 color=vColor*(size<.1?vec3(1.05):light);
           if(size>4.5&&size<6.5)color=mix(vColor*light,vColor*1.15,uArtificial);
@@ -132,6 +135,8 @@
             // A small emissive contribution identifies the source without a glowing outline.
             color=vColor*(light+vec3(uActorGlow));
           }
+          if(size>7.0&&size<8.0)color=vColor*1.8;
+          if(size>9.5&&size<10.5)color=vColor*(.9+.28*sin(uWindowTime*2.2+vWorld.x*.13));
           if(size>1.5&&size<2.5){
             vec3 cell=vColor*179.0+n*137.0+uSeed;
             float id=hash(cell),period=28.0+hash(cell+17.0)*62.0;
@@ -153,7 +158,7 @@
       gl.deleteShader(vs); gl.deleteShader(fs); gl.useProgram(this.program);
       this.attributes = ['aPosition', 'aNormal', 'aColor'].map(n => gl.getAttribLocation(this.program, n));
       this.uMatrix = gl.getUniformLocation(this.program, 'uMatrix'); this.uEye = gl.getUniformLocation(this.program, 'uEye');
-      this.lightingUniforms=Object.fromEntries(['uLightMatrix','uSun','uAmbient','uDirect','uFog','uCenter','uWindowTime','uWindowRate','uSeed','uShadowEnabled','uShadowMap','uShore','uArtificial','uFlash','uFlashRadius','uActorLight0','uActorLight1','uActorGlow'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
+      this.lightingUniforms=Object.fromEntries(['uLightMatrix','uSun','uAmbient','uDirect','uFog','uCenter','uWindowTime','uWindowRate','uSeed','uShadowEnabled','uShadowMap','uShore','uArtificial','uFlash','uFlashRadius','uBananaLight','uActorLight0','uActorLight1','uActorGlow'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
       this.initShadows(shader);
       this.staticBuffer = gl.createBuffer(); this.dynamicBuffer = gl.createBuffer(); this.ambientBuffer = gl.createBuffer();
       gl.enable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA); gl.clearColor(0,0,0,0);
@@ -274,8 +279,12 @@
     }
     setExplosionLight(hit,reduced) {
       const flash=explosionLight(hit,reduced),u=this.lightingUniforms;
-      this.gl.uniform4f(u.uFlash,hit?.x||0,hit?.y||0,hit?.z||0,flash.strength*(this.light?.artificial||0));
+      this.gl.uniform4f(u.uFlash,hit?.x||0,hit?.y||0,hit?.z||0,flash.strength*(.55+.45*(this.light?.artificial||0)));
       this.gl.uniform1f(u.uFlashRadius,flash.radius);
+    }
+    setBananaLight(shot) {
+      if(!this.lightingUniforms)return;
+      this.gl.uniform4f(this.lightingUniforms.uBananaLight,shot?.x||0,shot?.y||0,shot?.z||0,shot?1.45:0);
     }
     countryside(m,{left,right,back,front}) {
       // Smooth low hills and farm clearings continue beyond the existing woodland ring.
@@ -541,13 +550,14 @@
         // Paired sconces frame the entrance without adding real-time point lights.
         for(const side of [-1,1])m.lamp(x+side*5,7,z+.08,1,3,.5,'#ffd59b');
       }
-      // A few small neon signs on intact storefronts; static, never flashing.
-      if(b.seed%5===0&&[entry-1,entry,entry+1].every(x=>occupied(b,x,1,b.nz-1)&&occupied(b,x,2,b.nz-1))) {
+      // More storefront signs, each with a gentle light change from the shared animation clock.
+      if(b.seed%3===0&&[entry-1,entry,entry+1].every(x=>occupied(b,x,1,b.nz-1)&&occupied(b,x,2,b.nz-1))) {
         const x=b.x+(entry+.5)*C-10,z=b.z+b.depth+.15,color=b.seed%2?'#f38bad':'#70d9dc';
         m.box(x-1,10,z,22,12,.7,'#273c48');
         const glyphs=['110101110101110','010101111101101','110101110101101']; // BAR
         glyphs.forEach((bits,glyph)=>{for(let row=0;row<5;row++)for(let col=0;col<3;col++)if(bits[row*3+col]==='1')
-          m.lamp(x+glyph*7+col*1.7,19-row*1.7,z+.75,1.3,1.3,.3,color);
+          {const start=m.data.length;m.lamp(x+glyph*7+col*1.7,19-row*1.7,z+.75,1.3,1.3,.3,color);
+          for(let k=start;k<m.data.length;k+=9)for(let axis=3;axis<6;axis++)m.data[k+axis]*=2;}
         });
         m.lightPool(x+10,3.06,z+2,15,3,color);
       }
@@ -619,18 +629,29 @@
     }
     banana(m,s) {
       for(let i=1;i<(s.trail?.length||0);i++) { const a=s.trail[i-1],b=s.trail[i];m.line([a.x,a.y,a.z],[b.x,b.y,b.z],.5+i/s.trail.length*1.3,s.charged?'#fff8b5':'#f7d492'); }
+      const haloStart=m.data.length;
+      m.sphere(s.x,s.y,s.z,s.charged?11:8,s.charged?'#fff5aa':'#ffdf7b',true);
+      for(let k=haloStart;k<m.data.length;k+=9)m.data[k+3]=9;
       const rot=s.time*9;
-      for(let i=0;i<5;i++) {const a=i*.5-1,xx=Math.cos(a)*5-3,yy=Math.sin(a)*5;m.box(s.x+xx*Math.cos(rot)-yy*Math.sin(rot)-1,s.y+xx*Math.sin(rot)+yy*Math.cos(rot)-1,s.z-1,2.8,2.8,2.8,i===0?'#907144':'#ffe17a');}
+      for(let i=0;i<5;i++) {const a=i*.5-1,xx=Math.cos(a)*5-3,yy=Math.sin(a)*5;const start=m.data.length;
+        m.box(s.x+xx*Math.cos(rot)-yy*Math.sin(rot)-1,s.y+xx*Math.sin(rot)+yy*Math.cos(rot)-1,s.z-1,2.8,2.8,2.8,i===0?'#907144':'#ffe17a');
+        for(let k=start;k<m.data.length;k+=9)for(let axis=3;axis<6;axis++)m.data[k+axis]*=7.5;
+      }
     }
     explosion(m,hit,reduced) {
       const t=hit.age;
       if(t<0||t>=1.7)return;
-      if(t<.35)m.sphere(hit.x,hit.y,hit.z,hit.radius*Math.sin(Math.min(1,t/.35)*Math.PI/2),t<.12?'#fff2b0':'#f2a154',true);
-      if(!reduced&&this.light?.artificial>.5&&t<.8){
-        const radius=hit.radius*(.38+.5*t)*(1-t/.8);
-        m.sphere(hit.x,hit.y,hit.z,Math.max(.1,radius),'#fff4cc',true);
+      if(t<.5)m.sphere(hit.x,hit.y,hit.z,Math.max(.1,hit.radius*(.3+.7*Math.sin(Math.min(1,t/.5)*Math.PI/2))),t<.16?'#fff3c1':'#f19a4e',true);
+      if(reduced)return;
+      if(t<.55){
+        const r=hit.radius*(.55+t*2.4),height=hit.y+2+t*10;
+        for(let i=0;i<20;i++){const a=i*Math.PI/10,b=(i+1)*Math.PI/10;
+          m.line([hit.x+Math.cos(a)*r,height,hit.z+Math.sin(a)*r],[hit.x+Math.cos(b)*r,height,hit.z+Math.sin(b)*r],Math.max(.3,2.3*(1-t/.55)),t<.24?'#ffe4a0':'#ef8d4b');}
       }
-      if(!reduced)for(let i=0;i<18;i++) { const a=i*2.399,r=hit.radius*(.6+t*2),x=hit.x+Math.cos(a)*r,z=hit.z+Math.sin(a)*r,y=hit.y+10+t*(25+i%5*8)-t*t*35,size=Math.max(.1,(1-t/1.7)*(i%3+1));if(i%3)m.lamp(x,y,z,size,size,size,'#ffbf65');else m.box(x,y,z,size,size,size,'#65706a'); }
+      for(let i=0;i<24;i++) {const a=i*2.399,r=hit.radius*(.45+t*(1.2+i%4*.18)),x=hit.x+Math.cos(a)*r,z=hit.z+Math.sin(a)*r;
+        const y=hit.y+8+t*(23+i%5*7)-t*t*37,size=Math.max(.1,(1-t/1.7)*(i%3+1));
+        if(i%4)m.lamp(x,y,z,size,size,size,i%3?'#ffbd62':'#fff0b0');else m.box(x,y,z,size,size,size,'#65706a');
+      }
     }
     closeReplay() {
       if(this.replay)this.gl.deleteBuffer(this.replay.beforeBuffer);
@@ -661,6 +682,7 @@
       else this.explosion(mesh,{...clip.hit,age:impactAge},reduced);
       this.setActorLights(replay.gorillas.map((g,i)=>({...g,alive:g.alive&&(impactAge<0||clip.hit.type!=='gorilla'||clip.hit.player!==i)})));
       this.setExplosionLight({...clip.hit,age:impactAge},reduced);
+      this.setBananaLight(impactAge<0?frame.point:null);
       this.ctx.clearRect(x-2,y-28,w+4,h+34);
       gl.enable(gl.SCISSOR_TEST);gl.scissor(left,bottom,width,height);gl.viewport(left,bottom,width,height);
       gl.clearColor(...this.light.fog,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.clearColor(0,0,0,0);
@@ -710,6 +732,7 @@
       this.cachedGame=game;this.revision=game.revision;
       this.applyLighting(game);
       this.setExplosionLight(game.impact,reduced);
+      this.setBananaLight(game.phase==='flying'?game.shot:null);
       // Match the sky to the haze at the far ground plane, including when orbiting.
       const horizonDistance=(3500-eye[1]*Math.sin(pose.pitch))/Math.cos(pose.pitch);
       const horizon=this.project(eye[0]-Math.sin(pose.yaw)*horizonDistance,0,eye[2]-Math.cos(pose.yaw)*horizonDistance);

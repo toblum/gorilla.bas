@@ -23,8 +23,9 @@
       label:sun.y<=0?'Nacht':sun.hour<7?'Morgengrauen':sun.hour<11?'Vormittag':sun.hour<14?'Mittag':sun.hour<17?'Nachmittag':'Sonnenuntergang'};
   }
   function explosionLight(hit,reduced=false) {
-    if(!hit||reduced||!Number.isFinite(hit.age)||hit.age<0||hit.age>=1.2)return {strength:0,radius:1};
-    return {strength:2.4*Math.exp(-hit.age*5)*(1-hit.age/1.2),radius:Math.max(90,Math.min(220,hit.radius*9))};
+    if(!hit||reduced||!Number.isFinite(hit.age)||hit.age<0||hit.age>=1.35)return {strength:0,radius:1};
+    const pulse=1+.22*Math.sin(hit.age*28);
+    return {strength:2.7*Math.exp(-hit.age*3.5)*(1-hit.age/1.35)*pulse,radius:Math.max(110,Math.min(250,hit.radius*10))};
   }
   class CameraRig {
     constructor(){this.pose={yaw:.42,pitch:.6,distance:1080,target:[0,55,30]};this.views=[null,null];this.player=null;this.round=null;this.game=null;this.time=0;}
@@ -115,7 +116,7 @@
       const circuits=[[0,2],columns.length>7?[5,7]:[3,5]];
       for(const [a,b] of circuits) {
         const route=[[columns[a]+87,back+13],[columns[b]+79,back+13],[columns[b]+79,front-25],[columns[a]+87,front-25]];
-        for(let i=0;i<4;i++)add(i%2?(a===0?'taxi':'bus'):'car',route,13,.12+i*.25);
+        for(let i=0;i<6;i++)add(i%3===1?(a===0?'taxi':'bus'):'car',route,12+i%3,.08+i/6);
       }
       // Wrapping happens in the distance haze, beyond the playable city.
       add('bus',[[-1750,front-5],[1750,front-5]],16,.48,.5);
@@ -126,7 +127,7 @@
       add('car',[[1750,front-13],[-1750,front-13]],19,.67,.5);
       add('sailboat',[[-1600,shore+185],[1600,shore+185]],5,.53,-2);
       add('boat',[[1600,shore+330],[-1600,shore+330]],8,.44,-2);
-      for(let i=0;i<4;i++)add('walker',[[left+45,front+6],[right-45,front+6],[right-45,front+12],[left+45,front+12]],2.2,i/4,4);
+      for(let i=0;i<5;i++)add('walker',[[left+45,front+6],[right-45,front+6],[right-45,front+12],[left+45,front+12]],2.2,i/5,4);
       add('airship',[[-1600,back-370],[1600,back-370]],7,.55,335);
       this.time=0;this.lastClock=null;
       this.update(0,true);

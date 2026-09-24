@@ -153,9 +153,23 @@ test('Residential windows wind down overnight and recover toward dawn while stre
 });
 test('Explosion illumination is local, decays to zero and is disabled for reduced motion',()=>{
  const hit={x:0,y:30,z:0,radius:20,age:0},saved={...hit};
- const first=view.explosionLight(hit);assert.ok(first.strength>2);assert.ok(first.radius<=220);
+ const first=view.explosionLight(hit);assert.ok(first.strength>2);assert.ok(first.radius<=250);
  assert.ok(view.explosionLight({...hit,age:.4}).strength<first.strength);
- for(const age of [-.1,1.2,2])assert.equal(view.explosionLight({...hit,age}).strength,0);
+ for(const age of [-.1,1.35,2])assert.equal(view.explosionLight({...hit,age}).strength,0);
  assert.equal(view.explosionLight(hit,true).strength,0);assert.equal(view.explosionLight(null).strength,0);
  assert.deepEqual(hit,saved);
+});
+test('Explosion lights nearby surfaces by day and the flying banana has its own light',()=>{
+ const r=Object.create(rendererPrototype()),calls=[];
+ r.gl={uniform4f(...args){calls.push(args);},uniform1f(){}};
+ r.lightingUniforms={uFlash:'flash',uFlashRadius:'radius',uBananaLight:'banana'};
+ r.light={artificial:0};
+ r.setExplosionLight({x:4,y:30,z:6,radius:18,age:0},false);
+ assert.ok(calls[0][4]>0,'daylight flash should illuminate the city');
+ r.setBananaLight({x:10,y:50,z:12});
+ assert.deepEqual(calls.at(-1),['banana',10,50,12,1.45]);
+ r.setBananaLight(null);
+ assert.equal(calls.at(-1)[4],0);
+ r.setExplosionLight({x:4,y:30,z:6,radius:18,age:0},true);
+ assert.equal(calls.at(-1)[4],0);
 });
