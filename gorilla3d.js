@@ -158,6 +158,55 @@
       }
     }
   }
-  const api={append,pose};
+  class Portrait {
+    constructor(canvas) {
+      this.canvas=canvas;
+      const gl=this.gl=canvas.getContext('webgl',{alpha:true,antialias:true,powerPreference:'low-power'});
+      if(!gl)throw new Error('WebGL portrait unavailable');
+      const shader=(type,source)=>{
+        const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);
+        if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));
+        return s;
+      };
+      const vertex=shader(gl.VERTEX_SHADER,`
+        attribute vec3 aPosition,aNormal,aColor;
+        varying vec3 vNormal,vColor;
+        void main(){
+          gl_Position=vec4((aPosition.x+aPosition.z*.18)*.049,(aPosition.y-14.0)*.044,-aPosition.z*.018,1.0);
+          vNormal=aNormal;vColor=aColor;
+        }`);
+      const fragment=shader(gl.FRAGMENT_SHADER,`
+        precision mediump float;
+        varying vec3 vNormal,vColor;
+        void main(){
+          vec3 light=normalize(vec3(.35,.7,1.0));
+          float diffuse=max(0.0,dot(normalize(vNormal),light));
+          gl_FragColor=vec4(vColor*(.57+.53*diffuse),1.0);
+        }`);
+      const program=gl.createProgram();gl.attachShader(program,vertex);gl.attachShader(program,fragment);
+      gl.linkProgram(program);
+      if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));
+      gl.deleteShader(vertex);gl.deleteShader(fragment);gl.useProgram(program);
+      this.attributes=['aPosition','aNormal','aColor'].map(name=>gl.getAttribLocation(program,name));
+      this.buffer=gl.createBuffer();gl.enable(gl.DEPTH_TEST);gl.clearColor(0,0,0,0);
+      this.lost=false;
+      canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();this.lost=true;});
+    }
+    draw(player,time,reduced=false) {
+      if(this.lost)return false;
+      const gl=this.gl,canvas=this.canvas;
+      const ratio=Math.min(root.devicePixelRatio||1,2),width=Math.round(canvas.clientWidth*ratio),height=Math.round(canvas.clientHeight*ratio);
+      if(!width||!height)return false;
+      if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;}
+      const mesh={data:[]};
+      append(mesh,{x:0,y:0,z:0,heading:Math.PI/2,alive:true},player,time,1,reduced);
+      gl.viewport(0,0,width,height);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+      gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(mesh.data),gl.DYNAMIC_DRAW);
+      this.attributes.forEach((location,index)=>{gl.enableVertexAttribArray(location);gl.vertexAttribPointer(location,3,gl.FLOAT,false,36,index*12);});
+      gl.drawArrays(gl.TRIANGLES,0,mesh.data.length/9);
+      return true;
+    }
+  }
+  const api={append,pose,Portrait};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.GorillaModel3D=api;
 })(typeof window!=='undefined'?window:globalThis);

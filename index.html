@@ -7,12 +7,12 @@
   <meta name="description" content="Zwei Gorillas, eine Skyline und explosive Bananen. Der lokale Retro-Klassiker für zwei – direkt im Browser.">
   <title>GORILLAS — Das Duell über den Dächern</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=1.4.5">
+  <link rel="stylesheet" href="style.css?v=1.4.6">
   <link rel="stylesheet" href="start-dialog.css?v=1.4.0">
   <script src="engine.js?v=1.4.0" defer></script>
   <script src="engine3d.js?v=1.4.7" defer></script>
   <script src="view3d.js?v=1.4.8" defer></script>
-  <script src="gorilla3d.js?v=1.4.9" defer></script>
+  <script src="gorilla3d.js?v=1.4.10" defer></script>
   <script src="city3d.js?v=1.4.9" defer></script>
   <script src="sound.js?v=1.4.0" defer></script>
   <script src="visuals.js?v=1.4.0" defer></script>
@@ -22,8 +22,8 @@
   <script src="classic.js?v=1.4.0" defer></script>
   <script src="classic-sound.js?v=1.4.0" defer></script>
   <script src="classic-ui.js?v=1.4.0" defer></script>
-  <script src="welcome.js?v=1.4.0" defer></script>
-  <script src="game.js?v=1.4.7" defer></script>
+  <script src="welcome.js?v=1.4.1" defer></script>
+  <script src="game.js?v=1.4.8" defer></script>
 </head>
 <body>
   <main class="page">
@@ -51,7 +51,7 @@
         </div>
         <div class="weather"><div class="wind-indicator" id="wind" role="img" aria-label="Windstille"><span id="wind-label">WINDSTILLE</span><svg id="wind-gauge" viewBox="0 0 140 16" aria-hidden="true"><path class="wind-axis" d="M70 1V15"/><path id="wind-arrow" d="M70 8H70"/></svg></div><span id="gravity-label">g 9,8</span></div>
         <div class="result" id="result" hidden>
-          <div class="result-card"><canvas id="winner-portrait" width="144" height="144" role="img" aria-label="Der Sieger jubelt"></canvas><span class="eyebrow" id="result-eyebrow">VOLLTREFFER</span><h2 id="result-title">Punkt für Spieler 1!</h2><p id="result-description"></p><button class="primary-button" id="continue" type="button">Nächste Runde <span aria-hidden="true">→</span></button></div>
+          <div class="result-card"><canvas id="winner-portrait" width="144" height="144" role="img" aria-label="Der Sieger jubelt"></canvas><canvas id="winner-portrait-3d" width="144" height="144" role="img" aria-label="Der Sieger jubelt" hidden></canvas><span class="eyebrow" id="result-eyebrow">VOLLTREFFER</span><h2 id="result-title">Punkt für Spieler 1!</h2><p id="result-description"></p><button class="primary-button" id="continue" type="button">Nächste Runde <span aria-hidden="true">→</span></button></div>
         </div>
       </div>
       <div id="classic-controls" hidden>
@@ -83,7 +83,7 @@
     <footer><span>EINE HOMMAGE AN QBASIC GORILLAS · 1990</span><a href="https://github.com/pmachapman/basic-samples/blob/master/QBASIC/GORILLA.BAS" target="_blank" rel="noopener noreferrer">Das Original <span aria-hidden="true">↗</span></a><span id="build-version">VERSION 1.4.0 · lokal</span></footer>
   </main>
   <dialog id="settings" aria-labelledby="settings-title">
-    <div class="welcome-scene"><span class="welcome-kicker">GORILLAS / EST. 1990</span><h2 id="welcome-title">Eine Skyline.<br>Euer Duell.</h2><canvas id="welcome-art" width="400" height="230" aria-hidden="true"></canvas><span class="welcome-caption" id="welcome-caption">2D · WINKEL + STÄRKE</span></div>
+    <div class="welcome-scene"><span class="welcome-kicker">GORILLAS / EST. 1990</span><h2 id="welcome-title">Eine Skyline.<br>Euer Duell.</h2><canvas id="welcome-art" width="400" height="230" aria-hidden="true"></canvas><canvas id="welcome-3d" width="400" height="230" aria-hidden="true" hidden></canvas><span class="welcome-caption" id="welcome-caption">2D · WINKEL + STÄRKE</span></div>
     <form id="settings-form">
       <div class="dialog-top"><h2 id="settings-title" tabindex="-1" autofocus>Bereit zum Abwurf?</h2><button id="settings-close" type="button" class="close-button" aria-label="Einstellungen schließen">×</button></div>
       <fieldset class="mode-select"><legend>Spielmodus</legend>

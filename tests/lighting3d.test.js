@@ -73,7 +73,7 @@ test('Window clock freezes on pause/reduced motion, and shadows refresh only on 
  draw(20000,false,true);assert.equal(renderer.windowTime,.05);
  draw(20010);assert.ok(Math.abs(renderer.windowTime-.06)<1e-9);assert.equal(shadows,1);
  game.revision++;draw(20020);assert.equal(shadows,2);
- game.newRound();draw(20030);assert.equal(shadows,3);assert.equal(builds,3);
+ game.newRound();game.setDayHour(12);draw(20030);assert.equal(shadows,3);assert.equal(builds,3);
  game.setDayHour(6);draw(20040);assert.equal(shadows,4);assert.equal(builds,3);
  game.setDayHour(18);draw(20050);assert.equal(shadows,5);assert.equal(builds,3);
 });
