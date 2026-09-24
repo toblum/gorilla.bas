@@ -549,20 +549,80 @@
         // Paired sconces frame the entrance without adding real-time point lights.
         for(const side of [-1,1])m.lamp(x+side*5,7,z+.08,1,3,.5,'#ffd59b');
       }
-      // More storefront signs, each with a gentle light change from the shared animation clock.
-      if(b.seed%3===0&&[entry-1,entry,entry+1].every(x=>occupied(b,x,1,b.nz-1)&&occupied(b,x,2,b.nz-1))) {
-        const x=b.x+(entry+.5)*C-10,z=b.z+b.depth+.15,color=b.seed%2?'#f38bad':'#70d9dc';
-        m.box(x-1,10,z,22,12,.7,'#273c48');
-        const glyphs=['110101110101110','010101111101101','110101110101101']; // BAR
-        glyphs.forEach((bits,glyph)=>{for(let row=0;row<5;row++)for(let col=0;col<3;col++)if(bits[row*3+col]==='1')
-          {const start=m.data.length;m.lamp(x+glyph*7+col*1.7,19-row*1.7,z+.75,1.3,1.3,.3,color);
-          for(let k=start;k<m.data.length;k+=9)for(let axis=3;axis<6;axis++)m.data[k+axis]*=2;}
-        });
-        m.lightPool(x+10,3.06,z+2,15,3,color);
+      this.neonSigns(m,b);
+      this.roofDetails(m,b);
+    }
+    neonSigns(m,b) {
+      const words=['BAR','CAFE','KINO','JAZZ','HOTEL','CLUB'];
+      const glyphs={A:'010101111101101',B:'110101110101110',C:'011100100100011',E:'111100110100111',F:'111100110100100',H:'101101111101101',I:'111010010010111',J:'001001001101010',K:'101101110101101',L:'100100100100111',N:'101111111111101',O:'010101101101010',R:'110101110101101',T:'111010010010010',U:'101101101101111',Z:'111001010100111'};
+      const colors=['#f28ba9','#71dce0','#f4cf78','#b69cf1','#a9e7a4','#ffad78'];
+      const sign=(face,word,color,level)=>{
+        const side=face==='side',start=Math.floor((side?b.nz:b.nx)/2),edge=side?b.nx-1:b.nz-1;
+        const intact=[start-2,start-1,start,start+1,start+2].every(i=>i>=0&&i<(side?b.nz:b.nx)&&
+          occupied(b,side?edge:i,level,side?i:edge)&&occupied(b,side?edge:i,level+1,side?i:edge));
+        if(!intact)return;
+        const width=word.length*5+5,y=level*CELL+2,u=(side?b.z+b.depth/2:b.x+b.width/2)-width/2;
+        const x=b.x+b.width+.18,z=b.z+b.depth+.18;
+        if(side)m.box(x,y-1,u-1,.7,13,width+2,'#263d47');
+        else m.box(u-1,y-1,z,width+2,13,.7,'#263d47');
+        for(let letter=0;letter<word.length;letter++){
+          const bits=glyphs[word[letter]];
+          for(let row=0;row<5;row++)for(let col=0;col<3;col++)if(bits[row*3+col]==='1'){
+            const a=u+3+letter*5+col*1.35,b=y+9-row*1.7;
+            if(side)m.quad([x+.74,b,a],[x+.74,b,a+1.1],[x+.74,b+1.25,a+1.1],[x+.74,b+1.25,a],color,[10,0,0]);
+            else m.quad([a,b,z+.74],[a+1.1,b,z+.74],[a+1.1,b+1.25,z+.74],[a,b+1.25,z+.74],color,[0,0,10]);
+          }
+        }
+        // A small corner motif breaks up the row of lettering without adding another light source.
+        if(side)m.lamp(x+.75,y+4,u+width-1,.5,3,.5,color);
+        else m.lamp(u+width-1,y+4,z+.75,.5,3,.5,color);
+      };
+      const primary=b.seed%words.length;
+      if(b.seed%2===0&&b.ny>3)sign('front',words[primary],colors[primary],Math.min(1+b.seed%3,b.ny-3));
+      if(b.seed%5===1&&b.ny>4)sign('side',words[(primary+2)%words.length],colors[(primary+3)%colors.length],Math.min(2+b.seed%3,b.ny-3));
+    }
+    roofDetails(m,b) {
+      if(b.player!==undefined)return;
+      const y=b.height,top=b.ny-1,C=CELL;
+      const clear=(x,z,w=1,d=1)=>{
+        for(let dz=0;dz<d;dz++)for(let dx=0;dx<w;dx++)if(!occupied(b,x+dx,top,z+dz))return false;
+        return true;
+      };
+      if(b.seed%3!==0)for(let x=0;x<b.nx;x++)for(const z of [0,b.nz-1])if(clear(x,z))
+        m.box(b.x+x*C,y+.1,b.z+z*C,C,2.2,1.2,'#b9b9a7');
+      if(b.seed%3===2)for(let z=1;z<b.nz-1;z++)for(const x of [0,b.nx-1])if(clear(x,z))
+        m.box(b.x+x*C,y+.1,b.z+z*C,1.2,2.2,C,'#b9b9a7');
+      if(!clear(2,2,2,2))return;
+      const x=b.x+2*C,z=b.z+2*C,variant=b.seed%5;
+      if(variant===0){
+        // Sawtooth glass skylight with a visible ridge.
+        m.box(x,y+.5,z,16,1,16,'#7b8e8d');
+        m.quad([x,y+2,z],[x+8,y+8,z],[x+8,y+8,z+16],[x,y+2,z+16],'#7fb1b6');
+        m.quad([x+8,y+8,z],[x+16,y+2,z],[x+16,y+2,z+16],[x+8,y+8,z+16],'#a8cfca');
+        m.line([x+8,y+8,z],[x+8,y+8,z+16],1.3,'#e2d5b3');
+      } else if(variant===1){
+        // Planted roof terrace with two raised beds and a light pergola.
+        for(const dx of [0,9]){m.box(x+dx,y+1,z,7,3,15,'#9b7865');m.box(x+dx+.6,y+4,z+.6,5.8,1,13.8,'#799b6e');}
+        for(const dx of [1,14])for(const dz of [1,14])m.box(x+dx,y+1,z+dz,1,12,1,'#8c8068');
+        for(const dz of [1,8,14])m.box(x,y+13,z+dz,16,1,1,'#bba887');
+      } else if(variant===2){
+        // A pair of inclined solar panels reads as a dark blue roof band.
+        for(const dz of [0,9]){
+          m.box(x,y+1,z+dz,16,2,7,'#647b7b');
+          m.quad([x,y+3,z+dz],[x+16,y+3,z+dz],[x+16,y+8,z+dz+7],[x,y+8,z+dz+7],'#456b86');
+          for(const dx of [5,10])m.line([x+dx,y+3,z+dz],[x+dx,y+8,z+dz+7],.5,'#a3bcc1');
+        }
+      } else if(variant===3){
+        // Elevated water tank and service ladder add a distinct skyline shape.
+        for(const dx of [2,12])for(const dz of [2,12])m.box(x+dx,y+1,z+dz,1.5,12,1.5,'#708380');
+        m.box(x+1,y+12,z+1,14,9,14,'#a2aaa0');m.box(x,y+20,z,16,2,16,'#d0c4a5');
+        for(let h=3;h<18;h+=3)m.line([x+1,y+h,z-.5],[x+5,y+h,z-.5],.6,'#d8caaa');
+      } else {
+        // Ventilation housings and ducts form a low industrial roofscape.
+        m.box(x,y+1,z,11,8,10,'#879a95');m.box(x+1,y+9,z+1,9,1,8,'#bdc3b0');
+        for(const dz of [2,4,6,8])m.box(x+11.05,y+3,z+dz,1,3,.6,'#4c666c');
+        m.box(x+11,y+1,z+11,5,5,5,'#697f7c');m.box(x+12,y+6,z+12,3,1,3,'#b9c2b1');
       }
-      // Roof details sit only on intact roof voxels, including after explosions.
-      if(occupied(b,1,b.ny-1,1)) { m.box(b.x+9,b.height+1,b.z+9,6,4,6,'#80928b');m.box(b.x+9,b.height+5,b.z+9,6,1,6,'#b4bca8'); }
-      if(b.player===undefined && occupied(b,b.nx-2,b.ny-1,b.nz-2)) m.box(b.x+b.width-12,b.height,b.z+b.depth-12,1,16,1,'#526960');
     }
     sun(m,game,eye,time,reduced) {
       if(this.light.sun.y<=0)return;

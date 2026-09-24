@@ -51,7 +51,7 @@ test('Window identities are uniform across each pane, distinct and disappear wit
  const renderer=Object.create(rendererPrototype()),b=make().buildings[0];
  const collect=()=>{
   const panes=[];
-  const mesh={box(){},lamp(){},lightPool(){},quad(...args){const normal=args[5];if(Math.hypot(...normal)===2)panes.push({points:args.slice(0,4),id:args[4],normal});}};
+  const mesh={box(){},lamp(){},lightPool(){},line(){},quad(...args){const normal=args[5];if(normal&&Math.hypot(...normal)===2)panes.push({points:args.slice(0,4),id:args[4],normal});}};
   renderer.building(mesh,b);return panes;
  };
  const before=collect();assert.ok(before.length>100);
