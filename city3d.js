@@ -678,7 +678,7 @@
       else this.explosion(mesh,{...clip.hit,age:impactAge},reduced);
       this.setActorLights(replay.gorillas.map((g,i)=>({...g,alive:g.alive&&(impactAge<0||clip.hit.type!=='gorilla'||clip.hit.player!==i)})));
       this.setExplosionLight({...clip.hit,age:impactAge},reduced);
-      this.setBananaLight(impactAge<0?frame.point:null);
+      this.setBananaLight(impactAge<0?{...frame.point,charged:clip.shot.charged}:null);
       this.ctx.clearRect(x-2,y-28,w+4,h+34);
       gl.enable(gl.SCISSOR_TEST);gl.scissor(left,bottom,width,height);gl.viewport(left,bottom,width,height);
       gl.clearColor(...this.light.fog,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.clearColor(0,0,0,0);

@@ -173,6 +173,21 @@ test('Explosion lights nearby surfaces by day and the flying banana has its own 
  r.setExplosionLight({x:4,y:30,z:6,radius:18,age:0},true);
  assert.equal(calls.at(-1)[4],0);
 });
+test('Replay preserves charged banana lighting until impact',()=>{
+ const r=Object.create(rendererPrototype()),calls=[],noop=()=>{};
+ r.gl=new Proxy({uniform4f(...args){calls.push(args);}},{get:(target,key)=>target[key]||noop});
+ Object.assign(r,{clock:0,width:800,height:500,canvas:{width:800,height:500},ctx:{clearRect:noop},light:{fog:[0,0,0]},
+  lightingUniforms:{uBananaLight:'banana',uShadowEnabled:'shadow'},replayPanel:{style:{},querySelector:()=>({style:{}})},
+  banana:noop,explosion:noop,gorilla:noop,setActorLights:noop,setExplosionLight:noop,renderBuffer:noop,upload:()=>0});
+ const frame={done:false,progress:0,impactAge:-.1,point:{x:10,y:50,z:12}};
+ r.replay={start:0,beforeBuffer:{},beforeCount:0,gorillas:[],clip:{shot:{charged:true},hit:{type:'building'},eye:[0,80,120],target:[0,50,0],frame:()=>frame}};
+ r.drawReplay({},false,1);
+ assert.deepEqual(calls.at(-1),['banana',10,50,12,.65]);
+ r.replay.clip.shot.charged=false;r.drawReplay({},false,1);
+ assert.equal(calls.at(-1)[4],.42);
+ frame.impactAge=0;r.drawReplay({},false,1);
+ assert.equal(calls.at(-1)[4],0);
+});
 test('Banana keeps its curved geometry without an opaque halo or the gorilla material tag',()=>{
  const r=Object.create(rendererPrototype()),mesh={data:[],line(){},box(){this.data.push(0,0,0,1,0,0,1,1,1);},sphere(){throw Error('halo sphere hides the banana');}};
  r.banana(mesh,{x:0,y:40,z:0,time:.3,trail:[],charged:false});
