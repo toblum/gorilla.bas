@@ -116,7 +116,7 @@
       const circuits=[[0,2],columns.length>7?[5,7]:[3,5]];
       for(const [a,b] of circuits) {
         const route=[[columns[a]+87,back+13],[columns[b]+79,back+13],[columns[b]+79,front-25],[columns[a]+87,front-25]];
-        for(let i=0;i<6;i++)add(i%3===1?(a===0?'taxi':'bus'):'car',route,12+i%3,.08+i/6);
+        for(let i=0;i<6;i++)add(i%3===1?(a===0?'taxi':'bus'):'car',route,12,.08+i/6);
       }
       // Wrapping happens in the distance haze, beyond the playable city.
       add('bus',[[-1750,front-5],[1750,front-5]],16,.48,.5);

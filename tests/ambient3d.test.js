@@ -8,6 +8,8 @@ test('Ambient life is bounded, deterministic and does not alter gameplay or cons
  const life=new AmbientLife(game),other=new AmbientLife(game);
  assert.equal(life.actors.length,26);
  assert.equal(life.actors.filter(a=>['car','taxi','bus'].includes(a.kind)).length,18);
+ for(const circuit of [life.actors.slice(0,6),life.actors.slice(6,12)])
+  assert.equal(new Set(circuit.map(a=>a.speed)).size,1,'vehicles on one lane must keep their spacing');
  for(let time=0;time<10000;time+=16){life.update(time);other.update(time);}
  assert.deepEqual(life.actors,other.actors);assert.deepEqual(game.snapshot(),before);
 });
